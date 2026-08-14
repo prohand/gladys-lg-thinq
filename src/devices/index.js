@@ -17,6 +17,8 @@ import { createLogger, DEVICE_TRANSPORTS } from '@gladysassistant/integration-sd
 import { ThinqApi } from '../thinq/api.js';
 import { ThinqApiError } from '../thinq/errors.js';
 import { getOrCreateClientId } from '../thinq/clientId.js';
+import { SCHEDULER_POLL_FREQUENCY } from '../pollFrequency.js';
+import { DEFAULT_CONFIG } from '../config.js';
 import { buildCommand, buildDeviceModel, buildStates } from './builder.js';
 
 const logger = createLogger({ name: 'devices' });
@@ -33,6 +35,8 @@ export class DeviceRegistry {
     this.models = new Map();
     this.api = null;
     this.clientId = null;
+    /** Refresh interval asked for by the user, in milliseconds. */
+    this.pollIntervalMs = DEFAULT_CONFIG.poll_frequency * 1000;
   }
 
   /**
@@ -41,6 +45,7 @@ export class DeviceRegistry {
    * reports it, nothing throws.
    */
   configure(config) {
+    this.pollIntervalMs = config.poll_frequency * 1000;
     if (!config.access_token || !config.country_code) {
       this.api = null;
       return false;
@@ -121,11 +126,30 @@ export class DeviceRegistry {
   }
 
   /**
+   * Has this appliance waited long enough for its next read?
+   *
+   * Gladys registers every device at its slowest cadence (one minute) because
+   * that is the slowest its scheduler accepts; a user asking for five minutes
+   * therefore gets four ticks to ignore. Half a tick of slack absorbs the timer
+   * jitter, otherwise a tick landing a hair early would push the read a whole
+   * minute back, and the interval would drift.
+   */
+  dueForPoll(model, now = Date.now()) {
+    if (!model.lastPollAt) {
+      return true;
+    }
+    return now - model.lastPollAt >= this.pollIntervalMs - SCHEDULER_POLL_FREQUENCY / 2;
+  }
+
+  /**
    * Read one appliance and publish every feature it reported.
    * Offline appliances are flagged (transport badge) instead of throwing.
    */
   async pollModel(gladys, model) {
     const api = this.requireApi();
+    // Stamped before the call: a read that fails still spent its API call, and
+    // must not make the integration retry on every tick.
+    model.lastPollAt = Date.now();
     try {
       const state = await api.getDeviceState(model.deviceId);
       model.online = true;

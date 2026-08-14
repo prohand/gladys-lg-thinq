@@ -7,6 +7,7 @@ import { DeviceRegistry, parseCommandValue } from '../src/devices/index.js';
 import { ACTIONS } from '../src/actions.js';
 import { ThinqApiError, THINQ_ERROR_CODES } from '../src/thinq/errors.js';
 import { normalizeConfig } from '../src/config.js';
+import { SCHEDULER_POLL_FREQUENCY } from '../src/pollFrequency.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 import { AIR_CONDITIONER, REFRIGERATOR } from './helpers/fixtures.js';
 
@@ -59,7 +60,7 @@ test('discovery turns the account into Gladys devices', async () => {
     devices.map((d) => d.name),
     ['Salon', 'Cuisine'],
   );
-  assert.ok(devices.every((d) => d.poll_frequency === 60));
+  assert.ok(devices.every((d) => d.poll_frequency === SCHEDULER_POLL_FREQUENCY));
   assert.ok(devices.every((d) => d.features.length > 0));
 });
 
@@ -96,6 +97,36 @@ test('polling publishes the states of one appliance', async () => {
   );
   assert.equal(power.state, 1);
   assert.equal(model.online, true);
+});
+
+test('the ticks Gladys sends faster than the refresh interval are dropped', async () => {
+  const { registry, gladys } = buildRegistry();
+  registry.configure(
+    normalizeConfig({ access_token: 'pat', country_code: 'FR', poll_frequency: 300 }),
+  );
+  await registry.discover(gladys, config);
+  const model = [...registry.models.values()][0];
+
+  // Never read yet: the very first tick must go through.
+  assert.equal(registry.dueForPoll(model), true);
+
+  await registry.pollModel(gladys, model);
+  const readAt = model.lastPollAt;
+  assert.equal(registry.dueForPoll(model, readAt + 60 * 1000), false);
+  assert.equal(registry.dueForPoll(model, readAt + 240 * 1000), false);
+  // A tick landing slightly early still counts, otherwise the interval drifts
+  // by a whole minute at every cycle.
+  assert.equal(registry.dueForPoll(model, readAt + 299 * 1000), true);
+  assert.equal(registry.dueForPoll(model, readAt + 300 * 1000), true);
+});
+
+test('a failed read still counts as an attempt, no retry storm', async () => {
+  const { registry, gladys } = buildRegistry({ stateError: new Error('network down') });
+  await registry.discover(gladys, config);
+  const model = [...registry.models.values()][0];
+
+  await assert.rejects(registry.pollModel(gladys, model), /network down/);
+  assert.equal(registry.dueForPoll(model, model.lastPollAt + 1000), false);
 });
 
 test('an offline appliance is flagged, not fatal', async () => {

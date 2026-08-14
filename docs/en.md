@@ -44,9 +44,9 @@ LG's own documentation for this screen:
 
 The two other settings are optional:
 
-- **Refresh interval** — how often each appliance is read (default 5 minutes).
-  LG meters API calls per client and each appliance costs one call per refresh,
-  so lower it only if you own few appliances.
+- **Refresh interval** — how often each appliance is read (default 5 minutes,
+  one minute at the fastest). LG meters API calls per client and each appliance
+  costs one call per refresh, so lower it only if you own few appliances.
 - **Temperature unit** — LG publishes every temperature twice, in Celsius and in
   Fahrenheit. Only the unit you pick becomes a Gladys feature.
 - **Expose every numeric property** — off by default. Turn it on to also get the

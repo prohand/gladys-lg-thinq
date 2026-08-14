@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { ACTIONS } from '../src/actions.js';
-import { DEFAULT_CONFIG } from '../src/config.js';
+import { DEFAULT_CONFIG, MAX_POLL_FREQUENCY, MIN_POLL_FREQUENCY } from '../src/config.js';
 import { SUPPORTED_COUNTRIES, getRegionFromCountry } from '../src/thinq/regions.js';
 
 const manifest = JSON.parse(
@@ -56,6 +56,9 @@ test('the refresh interval stays inside the API-friendly range', () => {
   const poll = fieldNamed('poll_frequency');
   assert.ok(poll.min >= 60, 'polling faster than a minute burns the LG call quota');
   assert.ok(poll.default >= poll.min && poll.default <= poll.max);
+  // The form bounds and the ones the code clamps to must not drift apart.
+  assert.equal(poll.min, MIN_POLL_FREQUENCY);
+  assert.equal(poll.max, MAX_POLL_FREQUENCY);
 });
 
 test('section fields are purely presentational', () => {
