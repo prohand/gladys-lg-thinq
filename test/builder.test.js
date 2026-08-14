@@ -7,7 +7,12 @@ import {
   DEVICE_FEATURE_TYPES,
   DEVICE_FEATURE_UNITS,
 } from '@gladysassistant/integration-sdk';
-import { buildCommand, buildDeviceModel, buildStates } from '../src/devices/builder.js';
+import {
+  buildCommand,
+  buildDeviceModel,
+  buildStates,
+  isPublishableFeature,
+} from '../src/devices/builder.js';
 import { normalizeConfig } from '../src/config.js';
 import { SCHEDULER_POLL_FREQUENCY, isValidPollFrequency } from '../src/pollFrequency.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
@@ -61,7 +66,100 @@ test('the setpoint keeps the bounds declared by the appliance', () => {
   assert.equal(target.unit, DEVICE_FEATURE_UNITS.CELSIUS);
   assert.equal(target.min, 18);
   assert.equal(target.max, 30);
+  // The profile declares a step: Gladys uses it for the +/- buttons.
+  assert.equal(target.step, 1);
   assert.equal(target.read_only, false);
+});
+
+test('every published feature declares the bounds Gladys stores as NOT NULL', () => {
+  // `min`/`max` have no default value in Gladys: a single feature missing them
+  // makes the creation of the WHOLE appliance fail with a 422, so this holds
+  // for every feature of every appliance, verbose mode included.
+  for (const fixture of [AIR_CONDITIONER, REFRIGERATOR, WASHTOWER]) {
+    for (const expose_all_properties of [false, true]) {
+      const { model } = build(fixture, { expose_all_properties });
+      for (const feature of model.device.features) {
+        assert.ok(
+          Number.isFinite(feature.min) && Number.isFinite(feature.max),
+          `${model.device.name} / ${feature.name} has no numeric bounds`,
+        );
+        assert.ok(feature.min <= feature.max, `${feature.name} has a reversed range`);
+        assert.ok(isPublishableFeature(feature), `${feature.name} would be refused by Gladys`);
+      }
+    }
+  }
+});
+
+test('bounds are inferred when the profile declares none', () => {
+  const { model } = build(AIR_CONDITIONER);
+
+  // An on/off state is 0 or 1, whatever the LG enum behind it...
+  const power = featureNamed(model, 'On/Off');
+  assert.equal(power.min, 0);
+  assert.equal(power.max, 1);
+
+  // ...a text state has no numeric domain at all...
+  const jobMode = featureNamed(model, 'Current job mode');
+  assert.equal(jobMode.min, 0);
+  assert.equal(jobMode.max, 0);
+
+  // ...and a unit-less reading falls back on what its unit implies.
+  const humidity = featureNamed(model, 'Humidity');
+  assert.equal(humidity.min, 0);
+  assert.equal(humidity.max, 100);
+
+  const temperature = featureNamed(model, 'Current temperature');
+  assert.ok(temperature.min < 0 && temperature.max > 50);
+});
+
+test('a range Gladys would refuse is straightened before publishing', () => {
+  const { model } = build(
+    {
+      device: {
+        deviceId: 'TQS-ODD-1',
+        deviceInfo: { deviceType: 'DEVICE_OVEN', alias: 'Four', reportable: true },
+      },
+      profile: {
+        property: {
+          cooking: {
+            targetLevel: {
+              type: 'range',
+              mode: ['r', 'w'],
+              // Reversed bounds, and a step Gladys rejects (must be > 0).
+              value: { r: { min: 9, max: 0, step: 0 }, w: { min: 9, max: 0, step: 0 } },
+            },
+          },
+        },
+      },
+    },
+    { expose_all_properties: true },
+  );
+
+  const level = featureNamed(model, 'Target level');
+  assert.equal(level.min, 0);
+  assert.equal(level.max, 9);
+  assert.equal('step' in level, false);
+});
+
+test('a feature Gladys would reject is recognized as unpublishable', () => {
+  const valid = {
+    name: 'On/Off',
+    external_id: 'ext:lg-thinq:washer:1:operation-on-off',
+    category: DEVICE_FEATURE_CATEGORIES.SWITCH,
+    type: DEVICE_FEATURE_TYPES.SWITCH.BINARY,
+    min: 0,
+    max: 1,
+  };
+  assert.ok(isPublishableFeature(valid));
+
+  // Each of these is a 422 on the whole appliance if it ever reaches Gladys.
+  assert.equal(isPublishableFeature({ ...valid, name: '' }), false);
+  assert.equal(isPublishableFeature({ ...valid, min: undefined }), false);
+  assert.equal(isPublishableFeature({ ...valid, max: Number.NaN }), false);
+  assert.equal(isPublishableFeature({ ...valid, category: 'air-fryer' }), false);
+  assert.equal(isPublishableFeature({ ...valid, type: 'on-off' }), false);
+  assert.equal(isPublishableFeature({ ...valid, unit: 'lg-degrees' }), false);
+  assert.equal(isPublishableFeature({ ...valid, step: 0 }), false);
 });
 
 test('only the configured temperature unit is published', () => {

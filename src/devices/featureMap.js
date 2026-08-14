@@ -57,6 +57,56 @@ export function toGladysUnit(thinqUnit) {
   return UNITS[String(thinqUnit).toUpperCase()] ?? undefined;
 }
 
+/**
+ * Value domain published when the profile declares none.
+ *
+ * Gladys stores `min`/`max` as NOT NULL columns (see `featureBounds()` in
+ * builder.js), so a numeric feature always has to declare a domain — and LG
+ * only declares one for `range` properties. The unit is the best hint left: a
+ * percentage runs from 0 to 100 whatever the appliance, a room temperature
+ * never reaches 1000 °C.
+ */
+const DEFAULT_BOUNDS_BY_UNIT = {
+  [DEVICE_FEATURE_UNITS.CELSIUS]: { min: -50, max: 100 },
+  [DEVICE_FEATURE_UNITS.FAHRENHEIT]: { min: -58, max: 212 },
+  [DEVICE_FEATURE_UNITS.PERCENT]: { min: 0, max: 100 },
+  [DEVICE_FEATURE_UNITS.PPM]: { min: 0, max: 5000 },
+  [DEVICE_FEATURE_UNITS.MICROGRAM_PER_CUBIC_METER]: { min: 0, max: 1000 },
+  [DEVICE_FEATURE_UNITS.SECONDS]: { min: 0, max: 59 },
+  [DEVICE_FEATURE_UNITS.MINUTES]: { min: 0, max: 59 },
+  [DEVICE_FEATURE_UNITS.HOURS]: { min: 0, max: 24 },
+  [DEVICE_FEATURE_UNITS.DAYS]: { min: 0, max: 366 },
+  [DEVICE_FEATURE_UNITS.MONTHS]: { min: 0, max: 12 },
+};
+
+/** Domains that come from the category rather than from a unit. */
+const DEFAULT_BOUNDS_BY_CATEGORY = {
+  // Gladys' AQI scale, the one the dashboard widget colours.
+  [DEVICE_FEATURE_CATEGORIES.AIRQUALITY_SENSOR]: { min: 0, max: 500 },
+};
+
+/**
+ * "We have no idea what this value can be": a read-only reading with no unit
+ * and no declared range. Saying 0-0 is at least honest — inventing a ceiling
+ * would show a wrong scale on the dashboard.
+ */
+const UNKNOWN_BOUNDS = { min: 0, max: 0 };
+
+/**
+ * Fallback domain of a numeric feature, used when the ThinQ profile declares
+ * no range for the property.
+ *
+ * @param {object} shape the feature shape returned by `mapProperty()`
+ * @returns {{min: number, max: number}} bounds, never undefined
+ */
+export function defaultBounds(shape) {
+  return (
+    DEFAULT_BOUNDS_BY_UNIT[shape.unit] ??
+    DEFAULT_BOUNDS_BY_CATEGORY[shape.category] ??
+    UNKNOWN_BOUNDS
+  );
+}
+
 /** Properties that describe other properties — never features of their own. */
 const BOOKKEEPING_PROPERTIES = new Set([
   'unit',
