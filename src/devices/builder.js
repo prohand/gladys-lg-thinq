@@ -9,6 +9,7 @@
 
 import { createLogger, DEVICE_FEATURE_CATEGORIES } from '@gladysassistant/integration-sdk';
 import { deviceTypeSlug } from '../thinq/deviceTypes.js';
+import { SCHEDULER_POLL_FREQUENCY } from '../pollFrequency.js';
 import { buildControlPayload, flattenProfile, humanize, readStateValue } from './profile.js';
 import { mapProperty } from './featureMap.js';
 
@@ -185,7 +186,9 @@ export function buildDeviceModel(gladys, { thinqDevice, profile, config }) {
     device: {
       name,
       external_id: ids.device,
-      poll_frequency: config.poll_frequency,
+      // Gladys only accepts its own enum of cadences, the slowest being one
+      // minute; the user's (slower) interval is enforced by the registry.
+      poll_frequency: SCHEDULER_POLL_FREQUENCY,
       features,
       params: [
         { name: 'thinq_device_id', value: deviceId },

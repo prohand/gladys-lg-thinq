@@ -95,6 +95,7 @@ the profile first.
 ├─ index.js                          # SDK bootstrap + event wiring (no LG logic)
 ├─ src/
 │  ├─ config.js                      # config defaults + normalization
+│  ├─ pollFrequency.js               # the cadences Gladys accepts (ms enum)
 │  ├─ actions.js                     # the four Configuration-screen buttons
 │  ├─ thinq/                         # ← everything that talks to LG
 │  │  ├─ api.js                      #   REST client (devices, profile, state, control)
@@ -180,6 +181,12 @@ picks up the new version.
 - **Polling only.** LG offers real-time events over AWS IoT MQTT (client
   certificate registration + `GET /route`); this version reads on an interval
   instead. A cycle that ends between two polls is seen at the next one.
+- **The refresh interval is enforced here, not by Gladys.** `poll_frequency`
+  only accepts the values of the Gladys `DEVICE_POLL_FREQUENCIES` enum, in
+  milliseconds, the slowest being one minute — anything else is refused by the
+  host API (`invalid poll frequency`). Appliances are therefore registered at
+  one minute and the registry drops the ticks that come before the interval the
+  user asked for, so the LG call quota is respected.
 - **Energy usage** (`/devices/energy/...`) is not mapped yet.
 - Model-specific enums are read-only features; see _Commanding a model-specific
   mode_ above.

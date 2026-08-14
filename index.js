@@ -41,10 +41,16 @@ gladys.onSetValue(async (device, feature, value) => {
 });
 
 // --- Polling: Gladys asks to refresh one appliance ---------------------------
+// Gladys ticks every minute (its slowest cadence); the refresh interval chosen
+// by the user is usually slower, so most ticks are dropped here.
 gladys.onPoll(async (device) => {
   const model = registry.findModel(device);
   if (!model) {
     logger.debug(`onPoll ignored, unknown device ${device.external_id}`);
+    return;
+  }
+  if (!registry.dueForPoll(model)) {
+    logger.debug(`onPoll skipped, ${model.name} was read less than ${config.poll_frequency}s ago`);
     return;
   }
   await registry.pollModel(gladys, model);

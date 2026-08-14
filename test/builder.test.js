@@ -9,6 +9,7 @@ import {
 } from '@gladysassistant/integration-sdk';
 import { buildCommand, buildDeviceModel, buildStates } from '../src/devices/builder.js';
 import { normalizeConfig } from '../src/config.js';
+import { SCHEDULER_POLL_FREQUENCY, isValidPollFrequency } from '../src/pollFrequency.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 import { AIR_CONDITIONER, REFRIGERATOR, WASHTOWER } from './helpers/fixtures.js';
 
@@ -32,7 +33,10 @@ test('the device carries the LG alias and a stable external id', () => {
   const { model } = build(AIR_CONDITIONER);
   assert.equal(model.device.name, 'Salon');
   assert.equal(model.externalId, 'ext:lg-thinq:air-conditioner:TQS-AC-0001');
-  assert.equal(model.device.poll_frequency, 300);
+  // Gladys validates this against its own enum, in milliseconds: the user's
+  // interval (300s here) would be rejected by the host API.
+  assert.equal(model.device.poll_frequency, SCHEDULER_POLL_FREQUENCY);
+  assert.ok(isValidPollFrequency(model.device.poll_frequency));
   assert.deepEqual(
     model.device.params.find((p) => p.name === 'thinq_device_id'),
     { name: 'thinq_device_id', value: 'TQS-AC-0001' },

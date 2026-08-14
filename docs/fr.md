@@ -49,9 +49,9 @@ La documentation LG de cet écran :
 Les autres réglages sont optionnels :
 
 - **Intervalle de rafraîchissement** — la fréquence de lecture de chaque appareil
-  (5 minutes par défaut). LG limite le nombre d'appels d'API par client et chaque
-  appareil coûte un appel par rafraîchissement : ne le baissez que si vous avez
-  peu d'appareils.
+  (5 minutes par défaut, une minute au plus rapide). LG limite le nombre d'appels
+  d'API par client et chaque appareil coûte un appel par rafraîchissement : ne le
+  baissez que si vous avez peu d'appareils.
 - **Unité de température** — LG publie chaque température deux fois, en Celsius
   et en Fahrenheit. Seule l'unité choisie devient une fonctionnalité Gladys.
 - **Exposer toutes les propriétés numériques** — désactivé par défaut. Activez-le
