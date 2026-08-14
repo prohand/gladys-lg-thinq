@@ -16,9 +16,11 @@ const config = normalizeConfig({ access_token: 'pat', country_code: 'FR', poll_f
 /** Stand-in for ThinqApi, driven by the fixtures. */
 function fakeApi({ fixtures = [AIR_CONDITIONER, REFRIGERATOR], stateError } = {}) {
   const controls = [];
+  const stateReads = [];
   return {
     region: 'eic',
     controls,
+    stateReads,
     async getDevices() {
       return fixtures.map((f) => f.device);
     },
@@ -26,6 +28,7 @@ function fakeApi({ fixtures = [AIR_CONDITIONER, REFRIGERATOR], stateError } = {}
       return fixtures.find((f) => f.device.deviceId === deviceId).profile;
     },
     async getDeviceState(deviceId) {
+      stateReads.push(deviceId);
       if (stateError) {
         throw stateError;
       }
@@ -38,11 +41,11 @@ function fakeApi({ fixtures = [AIR_CONDITIONER, REFRIGERATOR], stateError } = {}
   };
 }
 
-function buildRegistry(options) {
+function buildRegistry(options = {}) {
   const api = fakeApi(options);
   const registry = new DeviceRegistry({ createApi: () => api });
   registry.configure(config);
-  return { registry, api, gladys: createFakeGladys() };
+  return { registry, api, gladys: createFakeGladys({ devices: options.devices }) };
 }
 
 test('an unconfigured registry refuses to call LG', () => {
@@ -153,6 +156,89 @@ test('a reachable appliance reports the cloud transport with no degraded flag', 
     assert.equal(entry.transport, DEVICE_TRANSPORTS.CLOUD);
     assert.equal(entry.degraded, undefined);
   }
+});
+
+test('the initial read only touches the appliances the user has added', async () => {
+  const { registry, api, gladys } = buildRegistry({ devices: [] });
+  await registry.discover(gladys, config);
+
+  // Discovery lists both appliances, but the user has added neither: reading
+  // them would only spend LG API calls, their states have nowhere to land.
+  await registry.pollAll(gladys);
+  assert.deepEqual(api.stateReads, []);
+  assert.deepEqual(gladys.published, []);
+
+  const model = [...registry.models.values()].find((m) => m.name === 'Salon');
+  gladys.devices.push({ external_id: model.externalId });
+  await registry.pollAll(gladys);
+  assert.deepEqual(api.stateReads, ['TQS-AC-0001']);
+  assert.ok(gladys.published.length > 0);
+});
+
+test('an appliance added by the user is read right away', async () => {
+  const { registry, api, gladys } = buildRegistry({ devices: [] });
+  await registry.discover(gladys, config);
+  await registry.pollAll(gladys);
+
+  const model = [...registry.models.values()].find((m) => m.name === 'Salon');
+  gladys.devices.push(model.device);
+  assert.equal(await registry.pollNewDevice(gladys, model.device), true);
+
+  // Its features carry a value immediately, without waiting a refresh interval.
+  assert.deepEqual(api.stateReads, ['TQS-AC-0001']);
+  const power = gladys.published.find((p) =>
+    p.featureExternalId.endsWith('operation-air-con-operation-mode'),
+  );
+  assert.equal(power.state, 1);
+  assert.ok(model.lastPollAt > 0);
+});
+
+test('a device created by another integration is not ours to read', async () => {
+  const { registry, api, gladys } = buildRegistry({ devices: [] });
+  await registry.discover(gladys, config);
+
+  assert.equal(await registry.pollNewDevice(gladys, { external_id: 'ext:zwave:1' }), false);
+  assert.deepEqual(api.stateReads, []);
+  assert.deepEqual(gladys.published, []);
+});
+
+test('an appliance added while offline is flagged, not fatal', async () => {
+  const { registry, gladys } = buildRegistry({
+    devices: [],
+    stateError: new ThinqApiError(THINQ_ERROR_CODES.NOT_CONNECTED_DEVICE, 'off', 400),
+  });
+  await registry.discover(gladys, config);
+  const model = [...registry.models.values()][0];
+
+  assert.equal(await registry.pollNewDevice(gladys, model.device), true);
+  assert.equal(model.online, false);
+});
+
+test('the first reads of a burst of additions stay sequential', async () => {
+  const { registry, api, gladys } = buildRegistry({ devices: [] });
+  await registry.discover(gladys, config);
+
+  let concurrent = 0;
+  let peak = 0;
+  const getDeviceState = api.getDeviceState.bind(api);
+  api.getDeviceState = async (deviceId) => {
+    concurrent += 1;
+    peak = Math.max(peak, concurrent);
+    try {
+      return await getDeviceState(deviceId);
+    } finally {
+      concurrent -= 1;
+    }
+  };
+
+  const models = [...registry.models.values()];
+  await Promise.all(models.map((model) => registry.pollNewDevice(gladys, model.device)));
+
+  assert.equal(peak, 1);
+  assert.deepEqual(
+    api.stateReads,
+    models.map((m) => m.deviceId),
+  );
 });
 
 test('a command reaches LG and echoes the requested state', async () => {

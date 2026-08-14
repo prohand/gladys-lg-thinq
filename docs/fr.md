@@ -74,9 +74,10 @@ Gladys. Ce que vous voyez dépend donc de votre matériel, pas d'une liste figé
 | Porte ouverte/fermée                             | Un capteur d'ouverture                                 |
 | Mode en cours, état, nom du programme            | Une fonctionnalité texte, utilisable comme déclencheur |
 
-Tout est rafraîchi selon l'intervalle configuré, et Gladys affiche un **badge**
-sur chaque appareil : `cloud` quand LG répond, `unreachable` (orange) quand
-l'appareil est débranché ou hors réseau.
+Un appareil est lu dès son ajout, ses fonctionnalités portent donc une valeur
+immédiatement ; tout est ensuite rafraîchi selon l'intervalle configuré. Gladys
+affiche un **badge** sur chaque appareil : `cloud` quand LG répond,
+`unreachable` (orange) quand l'appareil est débranché ou hors réseau.
 
 ## Piloter ce dont Gladys n'a pas de fonctionnalité
 
@@ -115,6 +116,12 @@ dans l'application LG après la dernière lecture de Gladys. Cliquez sur
 **Un appareil affiche un badge orange `unreachable`** — LG le signale comme non
 connecté. Vérifiez qu'il est alimenté et connecté au Wi-Fi dans l'application LG
 ThinQ ; le badge disparaît au rafraîchissement suivant.
+
+**Un appareil que je viens d'ajouter affiche « pas de valeur récente »** —
+l'appareil est lu au moment même de son ajout : cela signifie donc que LG
+n'avait rien à remonter à cet instant, en général parce que l'appareil est hors
+réseau (vérifiez le badge orange). Le rafraîchissement suivant remplit les
+fonctionnalités dès que LG répond de nouveau.
 
 **« Quota d'appels dépassé »** — augmentez l'intervalle de rafraîchissement. LG
 compte les appels de chaque client, et un rafraîchissement coûte un appel par

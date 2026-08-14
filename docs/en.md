@@ -69,8 +69,9 @@ So what you see depends on your hardware, not on a hard-coded list:
 | Door open/closed                                | An opening sensor                           |
 | Job mode, run state, programme name             | A text feature, usable as a scene trigger   |
 
-Everything is refreshed on the interval you configured, and Gladys shows a
-**badge** on each appliance: `cloud` when LG answers, `unreachable` (orange)
+An appliance is read as soon as you add it, so its features carry a value right
+away; everything is then refreshed on the interval you configured. Gladys shows
+a **badge** on each appliance: `cloud` when LG answers, `unreachable` (orange)
 when the appliance is unplugged or off the network.
 
 ## Controlling something Gladys has no feature for
@@ -106,6 +107,11 @@ app after Gladys last looked. Click **Refresh the appliance list**.
 **An appliance shows an orange `unreachable` badge** — LG reports it as not
 connected. Check it is powered and connected to Wi-Fi in the LG ThinQ app; the
 badge clears itself on the next refresh.
+
+**An appliance I just added shows "no recent value"** — the appliance is read
+the moment you add it, so this means LG had nothing to report at that instant:
+the appliance is usually off the network (check for the orange badge). The next
+refresh fills the features as soon as LG answers again.
 
 **"Call quota exceeded"** — increase the refresh interval. LG counts the calls
 of each client, and one refresh costs one call per appliance.

@@ -57,6 +57,18 @@ gladys.onPoll(async (device) => {
   await publishTransports();
 });
 
+// --- The user adds a discovered appliance ------------------------------------
+// Discovery publishes what an appliance CAN report; its values only arrive with
+// a poll, and the next one can be a whole refresh interval away. Reading the
+// appliance right now is what fills its features immediately, instead of
+// leaving the dashboard on "no recent value" for minutes after the add.
+gladys.onDeviceCreated(async (device) => {
+  logger.info(`onDeviceCreated -> ${device.external_id}`);
+  if (await registry.pollNewDevice(gladys, device)) {
+    await publishTransports();
+  }
+});
+
 // --- Manifest actions: buttons in the Configuration screen -------------------
 for (const [key, handler] of Object.entries(ACTIONS)) {
   gladys.onAction(key, (fields) => handler(gladys, { registry, config, fields }));
