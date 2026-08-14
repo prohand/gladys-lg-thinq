@@ -28,6 +28,21 @@ const REQUEST_SPACING_MS = 150;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * External ids of the appliances the user actually added to Gladys.
+ *
+ * The SDK keeps that list in sync (it is fetched on every (re)connection and
+ * updated by the device created/updated/deleted events). Returns `null` when
+ * the list is not available, meaning "no filtering": better one useless read
+ * than an appliance never read.
+ */
+function createdExternalIds(gladys) {
+  if (!Array.isArray(gladys?.devices)) {
+    return null;
+  }
+  return new Set(gladys.devices.map((device) => device?.external_id).filter(Boolean));
+}
+
 export class DeviceRegistry {
   constructor({ createApi = (options) => new ThinqApi(options) } = {}) {
     this.createApi = createApi;
@@ -37,6 +52,8 @@ export class DeviceRegistry {
     this.clientId = null;
     /** Refresh interval asked for by the user, in milliseconds. */
     this.pollIntervalMs = DEFAULT_CONFIG.poll_frequency * 1000;
+    /** Chain of the reads triggered by device creations (kept sequential). */
+    this.firstReads = Promise.resolve();
   }
 
   /**
@@ -168,9 +185,22 @@ export class DeviceRegistry {
     }
   }
 
-  /** Read every appliance once (used right after connecting). */
+  /**
+   * Read every appliance once (used right after connecting).
+   *
+   * Only the appliances the user actually added are read: discovering an
+   * account publishes every appliance it holds, but a state published for a
+   * device the user never added has nowhere to land — it only spends an LG API
+   * call. Those appliances get their first read the moment they are added
+   * (`pollNewDevice`).
+   */
   async pollAll(gladys) {
+    const created = createdExternalIds(gladys);
     for (const model of this.models.values()) {
+      if (created && !created.has(model.externalId)) {
+        logger.debug(`${model.name} is not added to Gladys yet, no initial read`);
+        continue;
+      }
       try {
         await this.pollModel(gladys, model);
       } catch (err) {
@@ -178,6 +208,39 @@ export class DeviceRegistry {
       }
       await sleep(REQUEST_SPACING_MS);
     }
+  }
+
+  /**
+   * Read an appliance the user has just added from the Discovery screen.
+   *
+   * Discovery only publishes the SHAPE of an appliance (its features); the
+   * values come from the poll loop, whose next read can be a whole refresh
+   * interval away. Without this, a freshly added appliance sits on the
+   * dashboard with no value at all until that interval elapses.
+   *
+   * Additions come one WebSocket message at a time but are handled
+   * concurrently, so the reads are chained: adding six appliances in a row must
+   * not fire six simultaneous ThinQ calls, which the API throttles.
+   *
+   * @returns {Promise<boolean>} false when the device is not one of ours
+   */
+  async pollNewDevice(gladys, device) {
+    const model = this.findModel(device);
+    if (!model) {
+      logger.debug(`Device created outside the LG ThinQ registry: ${device?.external_id}`);
+      return false;
+    }
+    const read = this.firstReads.then(async () => {
+      try {
+        await this.pollModel(gladys, model);
+      } catch (err) {
+        logger.error(`First read of ${model.name} failed`, err);
+      }
+      await sleep(REQUEST_SPACING_MS);
+    });
+    this.firstReads = read;
+    await read;
+    return true;
   }
 
   /**
