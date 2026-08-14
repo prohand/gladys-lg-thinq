@@ -1,0 +1,1217 @@
+{
+  "manifest_version": 1,
+  "type": "device",
+  "name": "LG ThinQ",
+  "description": {
+    "en": "Discover and control the LG appliances of your ThinQ account, through the official LG API.",
+    "fr": "Découvrez et pilotez les appareils LG de votre compte ThinQ, via l'API officielle LG."
+  },
+  "version": "1.0.0",
+  "docker_image": "ghcr.io/prohand/gladys-lg-thinq:1.0.0",
+  "gladys_version": ">=4.85.0",
+  "cover_image": "https://raw.githubusercontent.com/prohand/gladys-lg-thinq/main/cover.png",
+  "transports": ["cloud"],
+  "config_schema": [
+    {
+      "key": "credentials",
+      "type": "section",
+      "label": {
+        "en": "Connect your LG account",
+        "fr": "Connectez votre compte LG"
+      },
+      "description": {
+        "en": "This integration uses the official LG ThinQ Connect API. Log in on the LG page below with the LG account your appliances are registered on, create a Personal Access Token, tick the scopes of the appliances you want to use, then paste the token here.",
+        "fr": "Cette intégration utilise l'API officielle LG ThinQ Connect. Connectez-vous sur la page LG ci-dessous avec le compte LG sur lequel vos appareils sont enregistrés, créez un jeton d'accès personnel (PAT), cochez les autorisations des appareils souhaités, puis collez le jeton ici."
+      },
+      "links": [
+        {
+          "url": "https://connect-pat.lgthinq.com",
+          "label": {
+            "en": "Create a Personal Access Token",
+            "fr": "Créer un jeton d'accès personnel"
+          }
+        },
+        {
+          "url": "https://thinq.developer.lge.com/en/cloud/docs/thinq-connect/PAT-en/",
+          "label": {
+            "en": "LG documentation",
+            "fr": "Documentation LG"
+          }
+        }
+      ]
+    },
+    {
+      "key": "access_token",
+      "type": "secret",
+      "label": {
+        "en": "Personal Access Token",
+        "fr": "Jeton d'accès personnel"
+      },
+      "description": {
+        "en": "The token created on the LG page above. It is stored encrypted and never sent back to the browser.",
+        "fr": "Le jeton créé sur la page LG ci-dessus. Il est stocké chiffré et jamais renvoyé au navigateur."
+      },
+      "required": true
+    },
+    {
+      "key": "country_code",
+      "type": "select",
+      "label": {
+        "en": "Country of the LG account",
+        "fr": "Pays du compte LG"
+      },
+      "description": {
+        "en": "LG hosts accounts on regional servers: pick the country your LG account was created in, not the one you live in today.",
+        "fr": "LG héberge les comptes sur des serveurs régionaux : choisissez le pays de création du compte LG, pas votre pays de résidence actuel."
+      },
+      "required": true,
+      "default": "FR",
+      "options": [
+        {
+          "value": "AE",
+          "label": {
+            "en": "United Arab Emirates (AE)"
+          }
+        },
+        {
+          "value": "AF",
+          "label": {
+            "en": "Afghanistan (AF)"
+          }
+        },
+        {
+          "value": "AG",
+          "label": {
+            "en": "Antigua and Barbuda (AG)"
+          }
+        },
+        {
+          "value": "AL",
+          "label": {
+            "en": "Albania (AL)"
+          }
+        },
+        {
+          "value": "AM",
+          "label": {
+            "en": "Armenia (AM)"
+          }
+        },
+        {
+          "value": "AO",
+          "label": {
+            "en": "Angola (AO)"
+          }
+        },
+        {
+          "value": "AR",
+          "label": {
+            "en": "Argentina (AR)"
+          }
+        },
+        {
+          "value": "AT",
+          "label": {
+            "en": "Austria (AT)"
+          }
+        },
+        {
+          "value": "AU",
+          "label": {
+            "en": "Australia (AU)"
+          }
+        },
+        {
+          "value": "AW",
+          "label": {
+            "en": "Aruba (AW)"
+          }
+        },
+        {
+          "value": "AZ",
+          "label": {
+            "en": "Azerbaijan (AZ)"
+          }
+        },
+        {
+          "value": "BA",
+          "label": {
+            "en": "Bosnia and Herzegovina (BA)"
+          }
+        },
+        {
+          "value": "BB",
+          "label": {
+            "en": "Barbados (BB)"
+          }
+        },
+        {
+          "value": "BD",
+          "label": {
+            "en": "Bangladesh (BD)"
+          }
+        },
+        {
+          "value": "BE",
+          "label": {
+            "en": "Belgium (BE)"
+          }
+        },
+        {
+          "value": "BF",
+          "label": {
+            "en": "Burkina Faso (BF)"
+          }
+        },
+        {
+          "value": "BG",
+          "label": {
+            "en": "Bulgaria (BG)"
+          }
+        },
+        {
+          "value": "BH",
+          "label": {
+            "en": "Bahrain (BH)"
+          }
+        },
+        {
+          "value": "BJ",
+          "label": {
+            "en": "Benin (BJ)"
+          }
+        },
+        {
+          "value": "BO",
+          "label": {
+            "en": "Bolivia (BO)"
+          }
+        },
+        {
+          "value": "BR",
+          "label": {
+            "en": "Brazil (BR)"
+          }
+        },
+        {
+          "value": "BS",
+          "label": {
+            "en": "Bahamas (BS)"
+          }
+        },
+        {
+          "value": "BY",
+          "label": {
+            "en": "Belarus (BY)"
+          }
+        },
+        {
+          "value": "BZ",
+          "label": {
+            "en": "Belize (BZ)"
+          }
+        },
+        {
+          "value": "CA",
+          "label": {
+            "en": "Canada (CA)"
+          }
+        },
+        {
+          "value": "CD",
+          "label": {
+            "en": "Democratic Republic of the Congo (CD)"
+          }
+        },
+        {
+          "value": "CF",
+          "label": {
+            "en": "Central African Republic (CF)"
+          }
+        },
+        {
+          "value": "CG",
+          "label": {
+            "en": "Republic of the Congo (CG)"
+          }
+        },
+        {
+          "value": "CH",
+          "label": {
+            "en": "Switzerland (CH)"
+          }
+        },
+        {
+          "value": "CI",
+          "label": {
+            "en": "Republic of Ivory Coast (CI)"
+          }
+        },
+        {
+          "value": "CL",
+          "label": {
+            "en": "Chile (CL)"
+          }
+        },
+        {
+          "value": "CM",
+          "label": {
+            "en": "Cameroon (CM)"
+          }
+        },
+        {
+          "value": "CN",
+          "label": {
+            "en": "China (CN)"
+          }
+        },
+        {
+          "value": "CO",
+          "label": {
+            "en": "Colombia (CO)"
+          }
+        },
+        {
+          "value": "CR",
+          "label": {
+            "en": "Costa Rica (CR)"
+          }
+        },
+        {
+          "value": "CU",
+          "label": {
+            "en": "Cuba (CU)"
+          }
+        },
+        {
+          "value": "CV",
+          "label": {
+            "en": "Cape Verde (CV)"
+          }
+        },
+        {
+          "value": "CY",
+          "label": {
+            "en": "Cyprus (CY)"
+          }
+        },
+        {
+          "value": "CZ",
+          "label": {
+            "en": "Czech Republic (CZ)"
+          }
+        },
+        {
+          "value": "DE",
+          "label": {
+            "en": "Germany (DE)"
+          }
+        },
+        {
+          "value": "DJ",
+          "label": {
+            "en": "Djibouti (DJ)"
+          }
+        },
+        {
+          "value": "DK",
+          "label": {
+            "en": "Denmark (DK)"
+          }
+        },
+        {
+          "value": "DM",
+          "label": {
+            "en": "Dominica (DM)"
+          }
+        },
+        {
+          "value": "DO",
+          "label": {
+            "en": "Dominican Republic (DO)"
+          }
+        },
+        {
+          "value": "DZ",
+          "label": {
+            "en": "Algeria (DZ)"
+          }
+        },
+        {
+          "value": "EC",
+          "label": {
+            "en": "Ecuador (EC)"
+          }
+        },
+        {
+          "value": "EE",
+          "label": {
+            "en": "Estonia (EE)"
+          }
+        },
+        {
+          "value": "EG",
+          "label": {
+            "en": "Egypt (EG)"
+          }
+        },
+        {
+          "value": "ES",
+          "label": {
+            "en": "Spain (ES)"
+          }
+        },
+        {
+          "value": "ET",
+          "label": {
+            "en": "Ethiopia (ET)"
+          }
+        },
+        {
+          "value": "FI",
+          "label": {
+            "en": "Finland (FI)"
+          }
+        },
+        {
+          "value": "FR",
+          "label": {
+            "en": "France (FR)"
+          }
+        },
+        {
+          "value": "GA",
+          "label": {
+            "en": "Gabon (GA)"
+          }
+        },
+        {
+          "value": "GB",
+          "label": {
+            "en": "United Kingdom (GB)"
+          }
+        },
+        {
+          "value": "GD",
+          "label": {
+            "en": "Grenada (GD)"
+          }
+        },
+        {
+          "value": "GE",
+          "label": {
+            "en": "Georgia (GE)"
+          }
+        },
+        {
+          "value": "GH",
+          "label": {
+            "en": "Gana (GH)"
+          }
+        },
+        {
+          "value": "GM",
+          "label": {
+            "en": "Gambia (GM)"
+          }
+        },
+        {
+          "value": "GN",
+          "label": {
+            "en": "Guinea (GN)"
+          }
+        },
+        {
+          "value": "GQ",
+          "label": {
+            "en": "Equatorial Guinea (GQ)"
+          }
+        },
+        {
+          "value": "GR",
+          "label": {
+            "en": "Greece (GR)"
+          }
+        },
+        {
+          "value": "GT",
+          "label": {
+            "en": "Guatemala (GT)"
+          }
+        },
+        {
+          "value": "GY",
+          "label": {
+            "en": "Guyana (GY)"
+          }
+        },
+        {
+          "value": "HK",
+          "label": {
+            "en": "Hong Kong (HK)"
+          }
+        },
+        {
+          "value": "HN",
+          "label": {
+            "en": "Honduras (HN)"
+          }
+        },
+        {
+          "value": "HR",
+          "label": {
+            "en": "Croatia (HR)"
+          }
+        },
+        {
+          "value": "HT",
+          "label": {
+            "en": "Haiti (HT)"
+          }
+        },
+        {
+          "value": "HU",
+          "label": {
+            "en": "Hungary (HU)"
+          }
+        },
+        {
+          "value": "ID",
+          "label": {
+            "en": "Indonesia (ID)"
+          }
+        },
+        {
+          "value": "IE",
+          "label": {
+            "en": "Ireland (IE)"
+          }
+        },
+        {
+          "value": "IL",
+          "label": {
+            "en": "Israel (IL)"
+          }
+        },
+        {
+          "value": "IN",
+          "label": {
+            "en": "India (IN)"
+          }
+        },
+        {
+          "value": "IQ",
+          "label": {
+            "en": "Iraq (IQ)"
+          }
+        },
+        {
+          "value": "IR",
+          "label": {
+            "en": "Iran (IR)"
+          }
+        },
+        {
+          "value": "IS",
+          "label": {
+            "en": "Iceland (IS)"
+          }
+        },
+        {
+          "value": "IT",
+          "label": {
+            "en": "Italy (IT)"
+          }
+        },
+        {
+          "value": "JM",
+          "label": {
+            "en": "Jamaica (JM)"
+          }
+        },
+        {
+          "value": "JO",
+          "label": {
+            "en": "Jordan (JO)"
+          }
+        },
+        {
+          "value": "JP",
+          "label": {
+            "en": "Japan (JP)"
+          }
+        },
+        {
+          "value": "KE",
+          "label": {
+            "en": "Kenya (KE)"
+          }
+        },
+        {
+          "value": "KG",
+          "label": {
+            "en": "Kyrgyzstan (KG)"
+          }
+        },
+        {
+          "value": "KH",
+          "label": {
+            "en": "Cambodia (KH)"
+          }
+        },
+        {
+          "value": "KN",
+          "label": {
+            "en": "Saint Kitts and Nevis (KN)"
+          }
+        },
+        {
+          "value": "KR",
+          "label": {
+            "en": "Korea (KR)"
+          }
+        },
+        {
+          "value": "KW",
+          "label": {
+            "en": "Kuwait (KW)"
+          }
+        },
+        {
+          "value": "KZ",
+          "label": {
+            "en": "Kazakhstan (KZ)"
+          }
+        },
+        {
+          "value": "LA",
+          "label": {
+            "en": "Laos (LA)"
+          }
+        },
+        {
+          "value": "LB",
+          "label": {
+            "en": "Lebanon (LB)"
+          }
+        },
+        {
+          "value": "LC",
+          "label": {
+            "en": "Saint Lucia (LC)"
+          }
+        },
+        {
+          "value": "LK",
+          "label": {
+            "en": "Sri Lanka (LK)"
+          }
+        },
+        {
+          "value": "LR",
+          "label": {
+            "en": "Liberia (LR)"
+          }
+        },
+        {
+          "value": "LT",
+          "label": {
+            "en": "Lithuania (LT)"
+          }
+        },
+        {
+          "value": "LU",
+          "label": {
+            "en": "Luxembourg (LU)"
+          }
+        },
+        {
+          "value": "LV",
+          "label": {
+            "en": "Latvia (LV)"
+          }
+        },
+        {
+          "value": "LY",
+          "label": {
+            "en": "Libyan Arab Jamahiriya (LY)"
+          }
+        },
+        {
+          "value": "MA",
+          "label": {
+            "en": "Morocco (MA)"
+          }
+        },
+        {
+          "value": "MD",
+          "label": {
+            "en": "Republic of Moldova (MD)"
+          }
+        },
+        {
+          "value": "ME",
+          "label": {
+            "en": "Montenegro (ME)"
+          }
+        },
+        {
+          "value": "MK",
+          "label": {
+            "en": "Macedonia (MK)"
+          }
+        },
+        {
+          "value": "ML",
+          "label": {
+            "en": "Mali (ML)"
+          }
+        },
+        {
+          "value": "MM",
+          "label": {
+            "en": "Myanmar (MM)"
+          }
+        },
+        {
+          "value": "MR",
+          "label": {
+            "en": "Mauritania (MR)"
+          }
+        },
+        {
+          "value": "MT",
+          "label": {
+            "en": "Malta (MT)"
+          }
+        },
+        {
+          "value": "MU",
+          "label": {
+            "en": "Mauritius (MU)"
+          }
+        },
+        {
+          "value": "MW",
+          "label": {
+            "en": "Malawi (MW)"
+          }
+        },
+        {
+          "value": "MX",
+          "label": {
+            "en": "Mexico (MX)"
+          }
+        },
+        {
+          "value": "MY",
+          "label": {
+            "en": "Malaysia (MY)"
+          }
+        },
+        {
+          "value": "NE",
+          "label": {
+            "en": "Niger (NE)"
+          }
+        },
+        {
+          "value": "NG",
+          "label": {
+            "en": "Nigeria (NG)"
+          }
+        },
+        {
+          "value": "NI",
+          "label": {
+            "en": "Nicaragua (NI)"
+          }
+        },
+        {
+          "value": "NL",
+          "label": {
+            "en": "Netherlands (NL)"
+          }
+        },
+        {
+          "value": "NO",
+          "label": {
+            "en": "Norway (NO)"
+          }
+        },
+        {
+          "value": "NP",
+          "label": {
+            "en": "Nepal (NP)"
+          }
+        },
+        {
+          "value": "NZ",
+          "label": {
+            "en": "New Zealand (NZ)"
+          }
+        },
+        {
+          "value": "OM",
+          "label": {
+            "en": "Oman (OM)"
+          }
+        },
+        {
+          "value": "PA",
+          "label": {
+            "en": "Panama (PA)"
+          }
+        },
+        {
+          "value": "PE",
+          "label": {
+            "en": "Peru (PE)"
+          }
+        },
+        {
+          "value": "PH",
+          "label": {
+            "en": "Philippines (PH)"
+          }
+        },
+        {
+          "value": "PK",
+          "label": {
+            "en": "Pakistan (PK)"
+          }
+        },
+        {
+          "value": "PL",
+          "label": {
+            "en": "Poland (PL)"
+          }
+        },
+        {
+          "value": "PR",
+          "label": {
+            "en": "Puerto Rico (PR)"
+          }
+        },
+        {
+          "value": "PS",
+          "label": {
+            "en": "Occupied Palestinian Territory (PS)"
+          }
+        },
+        {
+          "value": "PT",
+          "label": {
+            "en": "Portugal (PT)"
+          }
+        },
+        {
+          "value": "PY",
+          "label": {
+            "en": "Paraguay (PY)"
+          }
+        },
+        {
+          "value": "QA",
+          "label": {
+            "en": "Qatar (QA)"
+          }
+        },
+        {
+          "value": "RO",
+          "label": {
+            "en": "Romania (RO)"
+          }
+        },
+        {
+          "value": "RS",
+          "label": {
+            "en": "Serbia (RS)"
+          }
+        },
+        {
+          "value": "RU",
+          "label": {
+            "en": "Russian Federation (RU)"
+          }
+        },
+        {
+          "value": "RW",
+          "label": {
+            "en": "Rwanda (RW)"
+          }
+        },
+        {
+          "value": "SA",
+          "label": {
+            "en": "Saudi Arabia (SA)"
+          }
+        },
+        {
+          "value": "SD",
+          "label": {
+            "en": "Sudan (SD)"
+          }
+        },
+        {
+          "value": "SE",
+          "label": {
+            "en": "Sweden (SE)"
+          }
+        },
+        {
+          "value": "SG",
+          "label": {
+            "en": "Singapore (SG)"
+          }
+        },
+        {
+          "value": "SI",
+          "label": {
+            "en": "Slovenia (SI)"
+          }
+        },
+        {
+          "value": "SK",
+          "label": {
+            "en": "Slovakia (SK)"
+          }
+        },
+        {
+          "value": "SL",
+          "label": {
+            "en": "Sierra Leone (SL)"
+          }
+        },
+        {
+          "value": "SN",
+          "label": {
+            "en": "Senegal (SN)"
+          }
+        },
+        {
+          "value": "SO",
+          "label": {
+            "en": "Somalia (SO)"
+          }
+        },
+        {
+          "value": "SR",
+          "label": {
+            "en": "Suriname (SR)"
+          }
+        },
+        {
+          "value": "ST",
+          "label": {
+            "en": "Sao Tome and Principe (ST)"
+          }
+        },
+        {
+          "value": "SV",
+          "label": {
+            "en": "El Salvador (SV)"
+          }
+        },
+        {
+          "value": "SY",
+          "label": {
+            "en": "Syrian Arab Republic (SY)"
+          }
+        },
+        {
+          "value": "TD",
+          "label": {
+            "en": "Chad (TD)"
+          }
+        },
+        {
+          "value": "TG",
+          "label": {
+            "en": "Togo (TG)"
+          }
+        },
+        {
+          "value": "TH",
+          "label": {
+            "en": "Thailand (TH)"
+          }
+        },
+        {
+          "value": "TN",
+          "label": {
+            "en": "Tunisia (TN)"
+          }
+        },
+        {
+          "value": "TR",
+          "label": {
+            "en": "Turkey (TR)"
+          }
+        },
+        {
+          "value": "TT",
+          "label": {
+            "en": "Trinidad and Tobago (TT)"
+          }
+        },
+        {
+          "value": "TW",
+          "label": {
+            "en": "Taiwan (TW)"
+          }
+        },
+        {
+          "value": "TZ",
+          "label": {
+            "en": "United Republic of Tanzania (TZ)"
+          }
+        },
+        {
+          "value": "UA",
+          "label": {
+            "en": "Ukraine (UA)"
+          }
+        },
+        {
+          "value": "UG",
+          "label": {
+            "en": "Uganda (UG)"
+          }
+        },
+        {
+          "value": "US",
+          "label": {
+            "en": "USA (US)"
+          }
+        },
+        {
+          "value": "UY",
+          "label": {
+            "en": "Uruguay (UY)"
+          }
+        },
+        {
+          "value": "UZ",
+          "label": {
+            "en": "Uzbekistan (UZ)"
+          }
+        },
+        {
+          "value": "VC",
+          "label": {
+            "en": "Saint Vincent and the Grenadines (VC)"
+          }
+        },
+        {
+          "value": "VE",
+          "label": {
+            "en": "Venezuela (VE)"
+          }
+        },
+        {
+          "value": "VN",
+          "label": {
+            "en": "Vietnam (VN)"
+          }
+        },
+        {
+          "value": "XK",
+          "label": {
+            "en": "Kosovo (XK)"
+          }
+        },
+        {
+          "value": "YE",
+          "label": {
+            "en": "Yemen (YE)"
+          }
+        },
+        {
+          "value": "ZA",
+          "label": {
+            "en": "South Africa (ZA)"
+          }
+        },
+        {
+          "value": "ZM",
+          "label": {
+            "en": "Zambia (ZM)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "behaviour",
+      "type": "section",
+      "label": {
+        "en": "Behaviour",
+        "fr": "Comportement"
+      },
+      "description": {
+        "en": "LG meters the number of API calls per client. Each appliance costs one call per refresh, so keep the interval comfortable if you own many appliances.",
+        "fr": "LG limite le nombre d'appels d'API par client. Chaque appareil coûte un appel par rafraîchissement : gardez un intervalle confortable si vous possédez beaucoup d'appareils."
+      }
+    },
+    {
+      "key": "poll_frequency",
+      "type": "number",
+      "label": {
+        "en": "Refresh interval (s)",
+        "fr": "Intervalle de rafraîchissement (s)"
+      },
+      "description": {
+        "en": "How often each appliance is read, in seconds.",
+        "fr": "Fréquence de lecture de chaque appareil, en secondes."
+      },
+      "required": false,
+      "default": 300,
+      "min": 60,
+      "max": 3600
+    },
+    {
+      "key": "temperature_unit",
+      "type": "select",
+      "label": {
+        "en": "Temperature unit",
+        "fr": "Unité de température"
+      },
+      "description": {
+        "en": "LG publishes each temperature twice, in Celsius and in Fahrenheit. Only the chosen unit becomes a Gladys feature.",
+        "fr": "LG publie chaque température deux fois, en Celsius et en Fahrenheit. Seule l'unité choisie devient une fonctionnalité Gladys."
+      },
+      "required": false,
+      "default": "celsius",
+      "options": [
+        {
+          "value": "celsius",
+          "label": {
+            "en": "Celsius",
+            "fr": "Celsius"
+          }
+        },
+        {
+          "value": "fahrenheit",
+          "label": {
+            "en": "Fahrenheit",
+            "fr": "Fahrenheit"
+          }
+        }
+      ]
+    },
+    {
+      "key": "expose_all_properties",
+      "type": "boolean",
+      "label": {
+        "en": "Expose every numeric property",
+        "fr": "Exposer toutes les propriétés numériques"
+      },
+      "description": {
+        "en": "Also create features for the numeric properties with no obvious meaning (scheduling offsets, counters). Useful to explore what an appliance reports.",
+        "fr": "Créer aussi des fonctionnalités pour les propriétés numériques sans signification évidente (décalages de programmation, compteurs). Utile pour explorer ce que remonte un appareil."
+      },
+      "required": false,
+      "default": false
+    }
+  ],
+  "actions": [
+    {
+      "key": "test_connection",
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion"
+      },
+      "description": {
+        "en": "Check the token and list the appliances of the account.",
+        "fr": "Vérifie le jeton et liste les appareils du compte."
+      },
+      "timeout_seconds": 30
+    },
+    {
+      "key": "refresh_devices",
+      "label": {
+        "en": "Refresh the appliance list",
+        "fr": "Rafraîchir la liste des appareils"
+      },
+      "description": {
+        "en": "Re-read the LG account, e.g. after pairing a new appliance in the LG ThinQ app.",
+        "fr": "Relit le compte LG, par exemple après avoir ajouté un appareil dans l'application LG ThinQ."
+      },
+      "timeout_seconds": 120
+    },
+    {
+      "key": "list_properties",
+      "label": {
+        "en": "List the properties",
+        "fr": "Lister les propriétés"
+      },
+      "description": {
+        "en": "Show the properties an appliance accepts, and the values allowed for each.",
+        "fr": "Affiche les propriétés acceptées par un appareil, et les valeurs autorisées pour chacune."
+      },
+      "timeout_seconds": 15,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Appliance",
+            "fr": "Appareil"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "key": "send_command",
+      "label": {
+        "en": "Send a command",
+        "fr": "Envoyer une commande"
+      },
+      "description": {
+        "en": "Set any ThinQ property, including the ones with no Gladys feature (job mode, fan step, course).",
+        "fr": "Règle n'importe quelle propriété ThinQ, y compris celles sans fonctionnalité Gladys (mode, vitesse, programme)."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Appliance",
+            "fr": "Appareil"
+          },
+          "required": true
+        },
+        {
+          "key": "property",
+          "type": "string",
+          "label": {
+            "en": "Property",
+            "fr": "Propriété"
+          },
+          "placeholder": {
+            "en": "airConJobMode.currentJobMode",
+            "fr": "airConJobMode.currentJobMode"
+          },
+          "required": true
+        },
+        {
+          "key": "value",
+          "type": "string",
+          "label": {
+            "en": "Value",
+            "fr": "Valeur"
+          },
+          "placeholder": {
+            "en": "COOL",
+            "fr": "COOL"
+          },
+          "required": true
+        }
+      ]
+    }
+  ]
+}

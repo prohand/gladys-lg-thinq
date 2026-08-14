@@ -1,0 +1,239 @@
+// -----------------------------------------------------------------------------
+// Device registry.
+//
+// Unlike a fixed-hardware integration, the device list here is DISCOVERED: it
+// is whatever appliances the LG account holds. So instead of a static array of
+// blueprints, this module keeps a live registry, rebuilt from the ThinQ API
+// every time the integration connects, the configuration changes or the user
+// asks for a re-scan.
+//
+// One entry = one appliance, with:
+//   - the Gladys device payload (name, features) built from the ThinQ profile;
+//   - the bindings (feature external_id -> ThinQ property + codec) used to
+//     decode a state and to encode a command.
+// -----------------------------------------------------------------------------
+
+import { createLogger, DEVICE_TRANSPORTS } from '@gladysassistant/integration-sdk';
+import { ThinqApi } from '../thinq/api.js';
+import { ThinqApiError } from '../thinq/errors.js';
+import { getOrCreateClientId } from '../thinq/clientId.js';
+import { buildCommand, buildDeviceModel, buildStates } from './builder.js';
+
+const logger = createLogger({ name: 'devices' });
+
+/** Pause between two ThinQ calls: the API throttles bursts per client. */
+const REQUEST_SPACING_MS = 150;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export class DeviceRegistry {
+  constructor({ createApi = (options) => new ThinqApi(options) } = {}) {
+    this.createApi = createApi;
+    /** @type {Map<string, object>} device external_id -> device model */
+    this.models = new Map();
+    this.api = null;
+    this.clientId = null;
+  }
+
+  /**
+   * (Re)build the API client from the user configuration. Returns false when
+   * the configuration is not usable yet (no token, no country): the caller
+   * reports it, nothing throws.
+   */
+  configure(config) {
+    if (!config.access_token || !config.country_code) {
+      this.api = null;
+      return false;
+    }
+    this.clientId ??= getOrCreateClientId();
+    this.api = this.createApi({
+      accessToken: config.access_token,
+      countryCode: config.country_code,
+      clientId: this.clientId,
+    });
+    return true;
+  }
+
+  /** The API client, or a clear error when the integration is unconfigured. */
+  requireApi() {
+    if (!this.api) {
+      throw new Error(
+        'LG ThinQ is not configured yet: fill in the Personal Access Token and the country.',
+      );
+    }
+    return this.api;
+  }
+
+  /**
+   * Fetch the appliances of the account and rebuild every device model.
+   * @returns {Promise<Array<object>>} the Gladys discovery payloads
+   */
+  async discover(gladys, config) {
+    const api = this.requireApi();
+    const thinqDevices = await api.getDevices();
+    logger.info(`ThinQ account holds ${thinqDevices.length} appliance(s)`);
+
+    const models = new Map();
+    for (const thinqDevice of thinqDevices) {
+      if (!thinqDevice?.deviceId) {
+        continue;
+      }
+      try {
+        const profile = await api.getDeviceProfile(thinqDevice.deviceId);
+        const model = buildDeviceModel(gladys, { thinqDevice, profile, config });
+        if (model.device.features.length === 0) {
+          logger.warn(`${model.name}: no usable property in the ThinQ profile, skipped`);
+          continue;
+        }
+        models.set(model.externalId, model);
+      } catch (err) {
+        // One unreadable appliance must not cost us the whole account.
+        logger.error(
+          `Could not read the profile of ${thinqDevice.deviceInfo?.alias ?? thinqDevice.deviceId}`,
+          err,
+        );
+      }
+      await sleep(REQUEST_SPACING_MS);
+    }
+
+    this.models = models;
+    return this.discoveredDevices();
+  }
+
+  /** Gladys discovery payloads of the currently known appliances. */
+  discoveredDevices() {
+    return [...this.models.values()].map((model) => model.device);
+  }
+
+  /** Find the model owning a Gladys device (dispatch of onPoll / onSetValue). */
+  findModel(device) {
+    return this.models.get(device?.external_id);
+  }
+
+  /** Find the model owning a feature external_id. */
+  findModelByFeature(featureExternalId) {
+    for (const model of this.models.values()) {
+      if (model.bindings.has(featureExternalId)) {
+        return model;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Read one appliance and publish every feature it reported.
+   * Offline appliances are flagged (transport badge) instead of throwing.
+   */
+  async pollModel(gladys, model) {
+    const api = this.requireApi();
+    try {
+      const state = await api.getDeviceState(model.deviceId);
+      model.online = true;
+      const states = buildStates(model, state);
+      if (states.length > 0) {
+        await gladys.publishStates(states);
+      }
+      logger.debug(`${model.name}: ${states.length} state(s) published`);
+    } catch (err) {
+      if (err instanceof ThinqApiError && err.isDeviceOffline) {
+        model.online = false;
+        logger.warn(`${model.name} is not connected to the LG cloud right now`);
+        return;
+      }
+      throw err;
+    }
+  }
+
+  /** Read every appliance once (used right after connecting). */
+  async pollAll(gladys) {
+    for (const model of this.models.values()) {
+      try {
+        await this.pollModel(gladys, model);
+      } catch (err) {
+        logger.error(`Initial read of ${model.name} failed`, err);
+      }
+      await sleep(REQUEST_SPACING_MS);
+    }
+  }
+
+  /**
+   * Apply a user command on a feature, then reflect the resulting state.
+   * @param {object} params `{ device, feature, value }` from `onSetValue`
+   */
+  async setValue(gladys, { device, feature, value }) {
+    const api = this.requireApi();
+    const model = this.findModel(device) ?? this.findModelByFeature(feature.external_id);
+    const binding = model?.bindings.get(feature.external_id);
+    if (!binding) {
+      throw new Error(`Unknown LG ThinQ feature: ${feature.external_id}`);
+    }
+
+    const payload = buildCommand(binding, value);
+    logger.info(`${model.name}: ${JSON.stringify(payload)}`);
+    await api.controlDevice(model.deviceId, payload);
+
+    // The appliance confirms asynchronously; publish the requested value so the
+    // dashboard follows immediately. The next poll reconciles it if the
+    // appliance decided otherwise.
+    await gladys.publishState(
+      feature.external_id,
+      binding.codec.toGladys(binding.codec.toThinq(value)),
+    );
+  }
+
+  /**
+   * ThinQ Connect is a cloud API: every appliance is reached through LG's
+   * servers. The badge only distinguishes "reachable" from "unreachable".
+   */
+  transportEntries() {
+    return [...this.models.values()].map((model) => ({
+      external_id: model.externalId,
+      transport: model.online === false ? DEVICE_TRANSPORTS.UNREACHABLE : DEVICE_TRANSPORTS.CLOUD,
+      ...(model.online === false
+        ? {
+            degraded: true,
+            message: {
+              en: 'The appliance is not connected to the LG cloud.',
+              fr: "L'appareil n'est pas connecté au cloud LG.",
+            },
+          }
+        : {}),
+    }));
+  }
+
+  /**
+   * Resolve a property reference typed by the user in the "Send a command"
+   * action. Accepts the feature key (`operation-air-con-operation-mode`), the
+   * ThinQ path (`operation.airConOperationMode`) or the bare property name.
+   */
+  findBinding(model, reference) {
+    const wanted = String(reference ?? '').trim();
+    if (!wanted) {
+      return undefined;
+    }
+    const lowered = wanted.toLowerCase();
+    for (const binding of model.bindings.values()) {
+      const { descriptor } = binding;
+      if (
+        descriptor.key === lowered ||
+        descriptor.path.toLowerCase() === lowered ||
+        descriptor.property.toLowerCase() === lowered
+      ) {
+        return binding;
+      }
+    }
+    return undefined;
+  }
+}
+
+/** Parse a value typed in a text field into the JSON type LG expects. */
+export function parseCommandValue(raw) {
+  const value = String(raw ?? '').trim();
+  if (/^-?\d+(\.\d+)?$/.test(value)) {
+    return Number(value);
+  }
+  if (/^(true|false)$/i.test(value)) {
+    return value.toLowerCase() === 'true';
+  }
+  return value;
+}
