@@ -10,7 +10,7 @@
   "docker_image": "ghcr.io/prohand/gladys-lg-thinq:1.0.0",
   "gladys_version": ">=4.86.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-lg-thinq/main/cover.png",
-  "categories": ["appliances", "climate", "environment"],
+  "categories": ["appliances", "climate"],
   "transports": ["cloud"],
   "config_schema": [
     {
