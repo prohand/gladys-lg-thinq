@@ -83,6 +83,10 @@ const DEFAULT_BOUNDS_BY_UNIT = {
 const DEFAULT_BOUNDS_BY_CATEGORY = {
   // Gladys' AQI scale, the one the dashboard widget colours.
   [DEVICE_FEATURE_CATEGORIES.AIRQUALITY_SENSOR]: { min: 0, max: 500 },
+  // A lifetime counter only ever grows and LG declares no ceiling; the number
+  // here exists because Gladys demands one, and is high enough that no washer
+  // reaches it before the drum gives up.
+  [DEVICE_FEATURE_CATEGORIES.COUNTER_SENSOR]: { min: 0, max: 1000000 },
 };
 
 /**
@@ -119,6 +123,18 @@ const BOOKKEEPING_PROPERTIES = new Set([
 /** Bounds of a target temperature: folded into that feature's min/max. */
 const TEMPERATURE_BOUND_PATTERN =
   /^(min|max)Target.*Temperature|^(cool|heat|roomAirCool|roomAirHeat|hotWater)(Min|Max)Temperature/;
+
+/** The `type`s a ThinQ profile uses for a numeric property. */
+const NUMERIC_VALUE_TYPES = new Set(['range', 'number']);
+
+/** Resources holding durations: `timer`, and the air conditioner `sleepTimer`. */
+const TIMER_RESOURCE_PATTERN = /timer$/i;
+
+/** The grain a timer property counts in — also the name of its unit. */
+const TIMER_GRAIN_PATTERN = /(Hour|Minute|Second)/;
+
+/** The timers of the cycle in progress, the ones worth showing by default. */
+const CYCLE_TIMER_PATTERN = /^(remain|total)(Hour|Minute|Second)$/;
 
 const SENSOR = DEVICE_FEATURE_TYPES.SENSOR;
 
@@ -295,15 +311,46 @@ const RULES = [
         }
       : null,
 
-  // --- cycle timers (how long is left on the wash/dry) ---------------------
-  ({ resource, property, unit }) =>
-    resource === 'timer' && /^(remain|total)(Hour|Minute|Second)$/.test(property)
+  // --- timers --------------------------------------------------------------
+  // Every timer property is a duration: how long is left on the running cycle
+  // (`remainMinute`), and the delayed start/stop knobs LG models as offsets
+  // (`relativeHourToStop`, `absoluteMinuteToStart`, the AC's `sleepTimer`).
+  // They all carry their grain in their name, which is also their unit.
+  ({ resource, property, unit, valueType, writable }) => {
+    if (!TIMER_RESOURCE_PATTERN.test(resource) || !NUMERIC_VALUE_TYPES.has(valueType)) {
+      return null;
+    }
+    const grain = property.match(TIMER_GRAIN_PATTERN)?.[1];
+    if (!grain) {
+      return null;
+    }
+    return {
+      name: humanize(property),
+      category: DEVICE_FEATURE_CATEGORIES.DURATION,
+      // Gladys renders a slider for `duration`/`decimal` and a plain read-out
+      // for `duration`/`integer`: a settable offset needs the former to be
+      // settable at all, a countdown reads better without decimals.
+      type: writable
+        ? DEVICE_FEATURE_TYPES.DURATION.DECIMAL
+        : DEVICE_FEATURE_TYPES.DURATION.INTEGER,
+      unit: toGladysUnit(unit ?? grain),
+      kind: 'number',
+      // Only the running cycle is worth a dashboard row by default; the
+      // scheduling offsets are noise until the user asks for everything.
+      optional: !CYCLE_TIMER_PATTERN.test(property),
+    };
+  },
+
+  // --- counters ------------------------------------------------------------
+  // `cycleCount`, `totalWashingCount`... — a reading that only goes up.
+  ({ property, valueType, writable }) =>
+    /Count$/.test(property) && !writable && NUMERIC_VALUE_TYPES.has(valueType)
       ? {
           name: humanize(property),
-          category: DEVICE_FEATURE_CATEGORIES.DURATION,
-          type: DEVICE_FEATURE_TYPES.DURATION.INTEGER,
-          unit: toGladysUnit(unit ?? property.replace(/^(remain|total)/, '')),
+          category: DEVICE_FEATURE_CATEGORIES.COUNTER_SENSOR,
+          type: SENSOR.INTEGER,
           kind: 'number',
+          optional: true,
         }
       : null,
 
@@ -366,13 +413,19 @@ function fallbackFeature(descriptor) {
     };
   }
 
-  // Remaining numbers are mostly scheduling knobs (absoluteHourToStart...).
-  // They are only exposed when the user asks for everything.
-  if (valueType === 'range' || valueType === 'number') {
+  // Any other number is a knob whose meaning we cannot guess (a wind step, a
+  // cooking level). It is only exposed when the user asks for everything, and
+  // it lands in the one pair Gladys defines for "no idea what this is":
+  // `unknown`/`unknown`. The type matters — the front-end reads its label and
+  // its icon from the category/type PAIR, and `unknown` only declares `unknown`
+  // and `binary`, so any other type renders a nameless, iconless feature. The
+  // value is still shown and historized; writing one goes through the
+  // "Send a command" action, which reaches every property anyway.
+  if (NUMERIC_VALUE_TYPES.has(valueType)) {
     return {
       name: humanize(property),
       category: DEVICE_FEATURE_CATEGORIES.UNKNOWN,
-      type: SENSOR.DECIMAL,
+      type: DEVICE_FEATURE_TYPES.UNKNOWN.UNKNOWN,
       unit: toGladysUnit(unit),
       kind: 'number',
       optional: true,
