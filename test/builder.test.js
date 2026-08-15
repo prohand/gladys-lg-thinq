@@ -296,6 +296,97 @@ test('the remaining cycle time is a duration in the right unit', () => {
   assert.equal(byId.get(featureNamed(model, 'Current state (Dryer)').external_id).text, 'END');
 });
 
+test('the scheduling offsets and the cycle counter are named features', () => {
+  // Gladys reads a feature's label AND its icon from the category/type PAIR
+  // (`deviceFeatureCategory.<category>.<type>`): a pair it does not declare
+  // renders a nameless, iconless box on the device page, which is what every
+  // verbose-mode number used to look like.
+  const { model } = build(WASHTOWER, { expose_all_properties: true });
+
+  const stopHour = featureNamed(model, 'Relative hour to stop (Washer)');
+  assert.equal(stopHour.category, DEVICE_FEATURE_CATEGORIES.DURATION);
+  // Settable: Gladys only renders a control for `duration`/`decimal`.
+  assert.equal(stopHour.type, DEVICE_FEATURE_TYPES.DURATION.DECIMAL);
+  assert.equal(stopHour.unit, DEVICE_FEATURE_UNITS.HOURS);
+  assert.equal(stopHour.read_only, false);
+
+  const stopMinute = featureNamed(model, 'Relative minute to stop (Washer)');
+  assert.equal(stopMinute.unit, DEVICE_FEATURE_UNITS.MINUTES);
+
+  const count = featureNamed(model, 'Cycle count (Washer)');
+  assert.equal(count.category, DEVICE_FEATURE_CATEGORIES.COUNTER_SENSOR);
+  assert.equal(count.type, DEVICE_FEATURE_TYPES.SENSOR.INTEGER);
+  assert.equal(count.read_only, true);
+  // A counter has no ceiling to read from the profile, but Gladys stores one.
+  assert.equal(count.min, 0);
+  assert.ok(count.max > 0);
+
+  const states = buildStates(model, WASHTOWER.state);
+  const byId = new Map(states.map((s) => [s.device_feature_external_id, s]));
+  assert.equal(byId.get(count.external_id).state, 2);
+  assert.equal(byId.get(stopHour.external_id).state, 0);
+});
+
+test('the delayed start/stop knobs stay out of the default device', () => {
+  // They are settable, so they must not crowd the dashboard of a user who did
+  // not ask for the full property set — unlike the countdown of the cycle.
+  const { model } = build(WASHTOWER);
+  assert.ok(featureNamed(model, 'Remain minute (Washer)'));
+  assert.equal(featureNamed(model, 'Relative hour to stop (Washer)'), undefined);
+  assert.equal(featureNamed(model, 'Cycle count (Washer)'), undefined);
+});
+
+test('no feature is published with a category/type pair Gladys cannot render', () => {
+  // The `unknown` category is the catch-all, and Gladys declares exactly two
+  // types under it. Anything else there is a feature with no name and no icon.
+  const renderableUnknownTypes = [
+    DEVICE_FEATURE_TYPES.UNKNOWN.UNKNOWN,
+    DEVICE_FEATURE_TYPES.SENSOR.BINARY,
+  ];
+
+  for (const fixture of [AIR_CONDITIONER, REFRIGERATOR, WASHTOWER]) {
+    const { model } = build(fixture, { expose_all_properties: true });
+    for (const feature of model.device.features) {
+      if (feature.category !== DEVICE_FEATURE_CATEGORIES.UNKNOWN) {
+        continue;
+      }
+      assert.ok(
+        renderableUnknownTypes.includes(feature.type),
+        `${feature.name} publishes unknown/${feature.type}, which Gladys shows unnamed`,
+      );
+    }
+  }
+});
+
+test('a number with no guessable meaning falls back on the unknown pair', () => {
+  const { model } = build(
+    {
+      device: {
+        deviceId: 'TQS-FAN-1',
+        deviceInfo: { deviceType: 'DEVICE_AIR_PURIFIER_FAN', alias: 'Ventilateur' },
+      },
+      profile: {
+        property: {
+          airFlow: {
+            windStep: {
+              type: 'range',
+              mode: ['r', 'w'],
+              value: { r: { min: 1, max: 5 }, w: { min: 1, max: 5 } },
+            },
+          },
+        },
+      },
+    },
+    { expose_all_properties: true },
+  );
+
+  const step = featureNamed(model, 'Wind step');
+  assert.equal(step.category, DEVICE_FEATURE_CATEGORIES.UNKNOWN);
+  assert.equal(step.type, DEVICE_FEATURE_TYPES.UNKNOWN.UNKNOWN);
+  assert.equal(step.min, 1);
+  assert.equal(step.max, 5);
+});
+
 test('an unknown appliance family still produces a usable device', () => {
   // LG keeps adding families; an unrecognized deviceType must degrade to a
   // stable slug rather than dropping the appliance.

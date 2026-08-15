@@ -186,6 +186,21 @@ export const WASHTOWER = {
         timer: {
           remainHour: { type: 'range', mode: ['r'], value: { r: { min: 0, max: 12 } } },
           remainMinute: { type: 'range', mode: ['r'], value: { r: { min: 0, max: 59 } } },
+          // Delayed stop: settable offsets, not the countdown of the cycle.
+          relativeHourToStop: {
+            type: 'range',
+            mode: ['r', 'w'],
+            value: { r: { min: 0, max: 12 }, w: { min: 0, max: 12 } },
+          },
+          relativeMinuteToStop: {
+            type: 'range',
+            mode: ['r', 'w'],
+            value: { r: { min: 0, max: 59 }, w: { min: 0, max: 59 } },
+          },
+        },
+        // A lifetime counter: no unit, no range, read-only.
+        cycle: {
+          cycleCount: { type: 'number', mode: ['r'] },
         },
       },
       {
@@ -204,7 +219,8 @@ export const WASHTOWER = {
     {
       location: { locationName: 'WASHER' },
       runState: { currentState: 'RUNNING' },
-      timer: { remainHour: 1, remainMinute: 25 },
+      timer: { remainHour: 1, remainMinute: 25, relativeHourToStop: 0, relativeMinuteToStop: 0 },
+      cycle: { cycleCount: 2 },
     },
     { location: { locationName: 'DRYER' }, runState: { currentState: 'END' } },
   ],

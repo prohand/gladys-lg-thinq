@@ -23,6 +23,23 @@ test('every manifest action has a registered handler, and vice versa', () => {
   assert.deepEqual(declared, Object.keys(ACTIONS).sort());
 });
 
+test('declaring catalog categories requires Gladys >= 4.86.0', () => {
+  // The store validator owns the vocabulary itself; what this pins is the
+  // coupling rule: a core older than 4.86 validates manifests against a strict
+  // allowlist and rejects any unknown top-level field, so a manifest carrying
+  // `categories` must not claim compatibility below the release that reads it.
+  assert.ok(manifest.categories.length >= 1 && manifest.categories.length <= 3);
+  assert.equal(new Set(manifest.categories).size, manifest.categories.length);
+
+  const minVersion = manifest.gladys_version.match(/>=\s*(\d+)\.(\d+)\.\d+/);
+  assert.ok(minVersion, 'gladys_version must declare a minimum version');
+  const [, major, minor] = minVersion.map(Number);
+  assert.ok(
+    major > 4 || (major === 4 && minor >= 86),
+    `categories requires gladys_version >= 4.86.0, got "${manifest.gladys_version}"`,
+  );
+});
+
 test('config_schema defaults stay consistent with DEFAULT_CONFIG', () => {
   for (const field of manifest.config_schema) {
     if (field.default !== undefined) {
