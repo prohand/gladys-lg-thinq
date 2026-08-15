@@ -17,6 +17,7 @@
 import { GladysIntegration, logger } from '@gladysassistant/integration-sdk';
 import { isConfigured, normalizeConfig } from './src/config.js';
 import { DeviceRegistry } from './src/devices/index.js';
+import { SCHEDULER_POLL_FREQUENCY } from './src/pollFrequency.js';
 import { ACTIONS } from './src/actions.js';
 import { ThinqApiError } from './src/thinq/errors.js';
 
@@ -25,6 +26,10 @@ const registry = new DeviceRegistry();
 
 // Current configuration (hot-reloaded through onConfigUpdated).
 let config = normalizeConfig();
+
+// Timer of the integration's own refresh loop (see startRefreshLoop).
+let refreshTimer = null;
+let refreshing = false;
 
 // --- Discovery: Gladys asks for the list of appliances -----------------------
 gladys.onScanRequest(async () => {
@@ -102,6 +107,7 @@ gladys.on('connected', async () => {
 async function initialize() {
   if (!isConfigured(config)) {
     logger.warn('Waiting for the Personal Access Token and the country');
+    stopRefreshLoop();
     await setStatus(false, {
       en: 'Enter your LG ThinQ Personal Access Token and your country to get started.',
       fr: "Renseignez votre jeton d'accès personnel LG ThinQ et votre pays pour commencer.",
@@ -115,11 +121,58 @@ async function initialize() {
     await gladys.publishDiscoveredDevices(devices);
     await registry.pollAll(gladys);
     await publishTransports();
+    startRefreshLoop();
     logger.info(`LG ThinQ ready: ${devices.length} appliance(s)`);
     await setStatus(true);
   } catch (err) {
     logger.error('LG ThinQ initialization failed', err);
     await setStatus(false, describeFailure(err));
+  }
+}
+
+/**
+ * Start the integration's own refresh loop.
+ *
+ * The Gladys scheduler is not enough on its own: it only polls the appliances
+ * that were created with `should_poll`, so an appliance added before that flag
+ * was published keeps its features frozen forever. This loop reads whatever is
+ * due on its own, and shares `dueForPoll` with `onPoll`, so an appliance Gladys
+ * does poll is still read once per refresh interval and the LG quota is
+ * unchanged. Ticking at the Gladys cadence keeps a single notion of "a tick".
+ */
+function startRefreshLoop() {
+  if (refreshTimer) {
+    return;
+  }
+  refreshTimer = setInterval(refreshDueAppliances, SCHEDULER_POLL_FREQUENCY);
+  // The WebSocket keeps the process alive; this timer must not, so a shutdown
+  // is never held back by a pending tick.
+  refreshTimer.unref?.();
+}
+
+/** Stop the refresh loop: nothing to read while the credentials are missing. */
+function stopRefreshLoop() {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+}
+
+/** One tick of the refresh loop. Overlapping ticks are dropped, not queued. */
+async function refreshDueAppliances() {
+  if (refreshing) {
+    logger.debug('refresh skipped, the previous one is still running');
+    return;
+  }
+  refreshing = true;
+  try {
+    if ((await registry.pollDue(gladys)) > 0) {
+      await publishTransports();
+    }
+  } catch (err) {
+    logger.error('Refresh cycle failed', err);
+  } finally {
+    refreshing = false;
   }
 }
 
@@ -161,6 +214,7 @@ async function setStatus(connected, message) {
 // --- Graceful shutdown -------------------------------------------------------
 gladys.handleShutdown((signal) => {
   logger.info(`Received ${signal} -> graceful shutdown`);
+  stopRefreshLoop();
 });
 
 // --- Startup -----------------------------------------------------------------

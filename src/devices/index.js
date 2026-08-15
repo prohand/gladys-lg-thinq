@@ -211,6 +211,39 @@ export class DeviceRegistry {
   }
 
   /**
+   * Read every added appliance whose refresh interval has elapsed.
+   *
+   * This is the integration's own refresh loop, and it is what actually keeps
+   * the values fresh: the Gladys scheduler only polls the appliances that were
+   * created with `should_poll`, so every appliance added before that flag was
+   * published would otherwise never be read again. Sharing `dueForPoll` and
+   * `lastPollAt` with `onPoll` means an appliance Gladys does poll is still
+   * read once per interval, never twice.
+   *
+   * @returns {Promise<number>} how many appliances were read
+   */
+  async pollDue(gladys) {
+    const created = createdExternalIds(gladys);
+    let read = 0;
+    for (const model of this.models.values()) {
+      if (created && !created.has(model.externalId)) {
+        continue;
+      }
+      if (!this.dueForPoll(model)) {
+        continue;
+      }
+      read += 1;
+      try {
+        await this.pollModel(gladys, model);
+      } catch (err) {
+        logger.error(`Refresh of ${model.name} failed`, err);
+      }
+      await sleep(REQUEST_SPACING_MS);
+    }
+    return read;
+  }
+
+  /**
    * Read an appliance the user has just added from the Discovery screen.
    *
    * Discovery only publishes the SHAPE of an appliance (its features); the

@@ -64,6 +64,7 @@ test('discovery turns the account into Gladys devices', async () => {
     ['Salon', 'Cuisine'],
   );
   assert.ok(devices.every((d) => d.poll_frequency === SCHEDULER_POLL_FREQUENCY));
+  assert.ok(devices.every((d) => d.should_poll === true));
   assert.ok(devices.every((d) => d.features.length > 0));
 });
 
@@ -121,6 +122,38 @@ test('the ticks Gladys sends faster than the refresh interval are dropped', asyn
   // by a whole minute at every cycle.
   assert.equal(registry.dueForPoll(model, readAt + 299 * 1000), true);
   assert.equal(registry.dueForPoll(model, readAt + 300 * 1000), true);
+});
+
+test('the refresh loop reads the added appliances, and only when they are due', async () => {
+  const { registry, api, gladys } = buildRegistry({ devices: [] });
+  await registry.discover(gladys, config);
+  const [salon, cuisine] = [...registry.models.values()];
+
+  // Nothing added yet: a tick spends no LG call at all.
+  assert.equal(await registry.pollDue(gladys), 0);
+  assert.deepEqual(api.stateReads, []);
+
+  gladys.devices.push({ external_id: salon.externalId });
+  assert.equal(await registry.pollDue(gladys), 1);
+  assert.deepEqual(api.stateReads, [salon.deviceId]);
+
+  // The next tick lands inside the refresh interval: no second call.
+  assert.equal(await registry.pollDue(gladys), 0);
+  assert.deepEqual(api.stateReads, [salon.deviceId]);
+
+  // ...until the interval has elapsed.
+  salon.lastPollAt -= config.poll_frequency * 1000;
+  assert.equal(await registry.pollDue(gladys), 1);
+  assert.deepEqual(api.stateReads, [salon.deviceId, salon.deviceId]);
+  assert.equal(cuisine.lastPollAt, undefined);
+});
+
+test('the refresh loop survives one appliance failing', async () => {
+  const { registry, gladys } = buildRegistry({ stateError: new Error('network down') });
+  await registry.discover(gladys, config);
+
+  assert.equal(await registry.pollDue(gladys), 2);
+  assert.ok([...registry.models.values()].every((model) => model.lastPollAt > 0));
 });
 
 test('a failed read still counts as an attempt, no retry storm', async () => {
