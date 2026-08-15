@@ -187,6 +187,13 @@ picks up the new version.
   host API (`invalid poll frequency`). Appliances are therefore registered at
   one minute and the registry drops the ticks that come before the interval the
   user asked for, so the LG call quota is respected.
+- **The refresh loop is the integration's own.** Appliances are published with
+  `should_poll: true` (without it Gladys registers the cadence but enrolls the
+  device in nothing), and the integration also runs its own timer. Both paths
+  go through the same `dueForPoll` guard and the same `lastPollAt`, so an
+  appliance is read once per interval whichever one fires — and an appliance
+  created before the flag existed still refreshes, instead of staying frozen
+  until it is removed and added again.
 - **Energy usage** (`/devices/energy/...`) is not mapped yet.
 - Model-specific enums are read-only features; see _Commanding a model-specific
   mode_ above.

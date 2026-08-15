@@ -42,6 +42,9 @@ test('the device carries the LG alias and a stable external id', () => {
   // interval (300s here) would be rejected by the host API.
   assert.equal(model.device.poll_frequency, SCHEDULER_POLL_FREQUENCY);
   assert.ok(isValidPollFrequency(model.device.poll_frequency));
+  // A frequency without this flag enrolls the device in nothing: Gladys polls
+  // what has `should_poll` AND a frequency.
+  assert.equal(model.device.should_poll, true);
   assert.deepEqual(
     model.device.params.find((p) => p.name === 'thinq_device_id'),
     { name: 'thinq_device_id', value: 'TQS-AC-0001' },
