@@ -1,6 +1,6 @@
 {
   "name": "gladys-lg-thinq",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "LG ThinQ integration for Gladys Assistant: discover and control the appliances of an LG account through the official ThinQ Connect API.",
   "type": "module",
