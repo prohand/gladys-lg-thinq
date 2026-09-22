@@ -19,7 +19,9 @@ import { ThinqApiError } from '../thinq/errors.js';
 import { getOrCreateClientId } from '../thinq/clientId.js';
 import { SCHEDULER_POLL_FREQUENCY } from '../pollFrequency.js';
 import { DEFAULT_CONFIG } from '../config.js';
+import { detectSceneEvents, observationChanged, observeModel } from '../sceneTriggers.js';
 import { buildCommand, buildDeviceModel, buildStates } from './builder.js';
+import { buildControlPayload } from './profile.js';
 
 const logger = createLogger({ name: 'devices' });
 
@@ -36,7 +38,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * the list is not available, meaning "no filtering": better one useless read
  * than an appliance never read.
  */
-function createdExternalIds(gladys) {
+export function createdExternalIds(gladys) {
   if (!Array.isArray(gladys?.devices)) {
     return null;
   }
@@ -44,10 +46,23 @@ function createdExternalIds(gladys) {
 }
 
 export class DeviceRegistry {
-  constructor({ createApi = (options) => new ThinqApi(options) } = {}) {
+  /**
+   * @param {object} [options]
+   * @param {Function} [options.createApi] builds the ThinQ client
+   * @param {Function} [options.onChange] called when what an appliance
+   *   displays (connection, run state, modes) changed: the widgets refresh
+   */
+  constructor({ createApi = (options) => new ThinqApi(options), onChange = () => {} } = {}) {
     this.createApi = createApi;
+    this.onChange = onChange;
     /** @type {Map<string, object>} device external_id -> device model */
     this.models = new Map();
+    /**
+     * device external_id -> last observation (see `observeModel`). Kept apart
+     * from the models: a re-discovery rebuilds them, and must not make the
+     * next read look like a first one (no transition would be reported).
+     */
+    this.observations = new Map();
     this.api = null;
     this.clientId = null;
     /** Refresh interval asked for by the user, in milliseconds. */
@@ -161,27 +176,70 @@ export class DeviceRegistry {
   /**
    * Read one appliance and publish every feature it reported.
    * Offline appliances are flagged (transport badge) instead of throwing.
+   *
+   * `silent` is for the reads that follow an action (a scene action, a widget
+   * button, a command): they publish the states but leave the observations
+   * alone, so no scene event is ever fired as the consequence of an action —
+   * a scene bound to that event would loop through the integration. The
+   * transition is not lost: the next regular read reports it.
    */
-  async pollModel(gladys, model) {
+  async pollModel(gladys, model, { silent = false } = {}) {
     const api = this.requireApi();
     // Stamped before the call: a read that fails still spent its API call, and
     // must not make the integration retry on every tick.
     model.lastPollAt = Date.now();
+    let state;
     try {
-      const state = await api.getDeviceState(model.deviceId);
-      model.online = true;
-      const states = buildStates(model, state);
-      if (states.length > 0) {
-        await gladys.publishStates(states);
-      }
-      logger.debug(`${model.name}: ${states.length} state(s) published`);
+      state = await api.getDeviceState(model.deviceId);
     } catch (err) {
       if (err instanceof ThinqApiError && err.isDeviceOffline) {
         model.online = false;
         logger.warn(`${model.name} is not connected to the LG cloud right now`);
+        await this.observe(gladys, model, null, silent);
         return;
       }
       throw err;
+    }
+    model.online = true;
+    model.lastState = state;
+    const states = buildStates(model, state);
+    if (states.length > 0) {
+      await gladys.publishStates(states);
+    }
+    logger.debug(`${model.name}: ${states.length} state(s) published`);
+    await this.observe(gladys, model, state, silent);
+  }
+
+  /**
+   * Compare a read with the previous one: fire the scene events it implies,
+   * and nudge the widgets when what they display moved.
+   */
+  async observe(gladys, model, state, silent) {
+    if (silent) {
+      this.notifyChange();
+      return;
+    }
+    const previous = this.observations.get(model.externalId);
+    const current = observeModel(model, state, previous);
+    this.observations.set(model.externalId, current);
+
+    for (const event of detectSceneEvents(model, previous, current)) {
+      logger.info(`${model.name}: scene event ${event.key}`);
+      // A refused event (quota, a core too old) must never break the read.
+      await gladys
+        .publishSceneEvent(event.key, event.data)
+        .catch((err) => logger.warn(`Scene event ${event.key} not accepted by Gladys`, err));
+    }
+    if (observationChanged(previous, current)) {
+      this.notifyChange();
+    }
+  }
+
+  notifyChange() {
+    try {
+      this.onChange();
+    } catch (err) {
+      logger.warn('Widget refresh request failed', err);
     }
   }
 
@@ -194,7 +252,7 @@ export class DeviceRegistry {
    * call. Those appliances get their first read the moment they are added
    * (`pollNewDevice`).
    */
-  async pollAll(gladys) {
+  async pollAll(gladys, { silent = false } = {}) {
     const created = createdExternalIds(gladys);
     for (const model of this.models.values()) {
       if (created && !created.has(model.externalId)) {
@@ -202,7 +260,7 @@ export class DeviceRegistry {
         continue;
       }
       try {
-        await this.pollModel(gladys, model);
+        await this.pollModel(gladys, model, { silent });
       } catch (err) {
         logger.error(`Initial read of ${model.name} failed`, err);
       }
@@ -319,6 +377,56 @@ export class DeviceRegistry {
           }
         : {}),
     }));
+  }
+
+  /** The model of an appliance picked in a form, or a clear error. */
+  requireModel(externalId) {
+    const model = this.models.get(externalId);
+    if (!model) {
+      throw new Error('This appliance is unknown, run "Refresh the appliance list" first.');
+    }
+    return model;
+  }
+
+  /**
+   * Send any ThinQ property on one appliance, validated against its profile
+   * first, then read the appliance back (silently, see `pollModel`) so the
+   * features reflect what actually happened.
+   *
+   * @param {object} gladys the SDK instance
+   * @param {object} params `{ device, property, value }` as typed by the user
+   * @returns {Promise<{model: object, binding: object, value: *}>}
+   */
+  async sendProperty(gladys, { device, property, value: rawValue }) {
+    const api = this.requireApi();
+    const model = this.requireModel(device);
+    const binding = this.findBinding(model, property);
+
+    if (!binding) {
+      throw new Error(
+        `${model.name} has no property "${property}". Use "List the properties" to see the exact names.`,
+      );
+    }
+    if (!binding.descriptor.writable) {
+      throw new Error(`"${binding.descriptor.path}" is read-only on ${model.name}.`);
+    }
+
+    const value = parseCommandValue(rawValue);
+    const accepted = binding.descriptor.writeValues;
+    if (Array.isArray(accepted) && accepted.length > 0 && !accepted.includes(value)) {
+      throw new Error(
+        `"${value}" is not accepted for ${binding.descriptor.path}. Allowed: ${accepted.join(' | ')}.`,
+      );
+    }
+
+    const payload = buildControlPayload(binding.descriptor, value);
+    logger.info(`${model.name}: ${JSON.stringify(payload)}`);
+    await api.controlDevice(model.deviceId, payload);
+
+    await this.pollModel(gladys, model, { silent: true }).catch((err) =>
+      logger.warn('Post-command read failed', err),
+    );
+    return { model, binding, value };
   }
 
   /**

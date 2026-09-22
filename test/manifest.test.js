@@ -11,12 +11,26 @@ import { readFile } from 'node:fs/promises';
 import { ACTIONS } from '../src/actions.js';
 import { DEFAULT_CONFIG, MAX_POLL_FREQUENCY, MIN_POLL_FREQUENCY } from '../src/config.js';
 import { SUPPORTED_COUNTRIES, getRegionFromCountry } from '../src/thinq/regions.js';
+import { SCENE_ACTIONS } from '../src/sceneActions.js';
+import { SCENE_TRIGGERS, detectSceneEvents, observeModel } from '../src/sceneTriggers.js';
+import { WIDGETS } from '../src/widgets.js';
+import { buildDeviceModel } from '../src/devices/builder.js';
+import { normalizeConfig } from '../src/config.js';
+import { createFakeGladys } from './helpers/fakeGladys.js';
+import { WASHTOWER } from './helpers/fixtures.js';
 
 const manifest = JSON.parse(
   await readFile(new URL('../gladys-assistant-integration.json', import.meta.url), 'utf8'),
 );
 
 const fieldNamed = (key) => manifest.config_schema.find((f) => f.key === key);
+
+/** Minimum Gladys version declared by the manifest, as [major, minor]. */
+function minimumGladysVersion() {
+  const minVersion = manifest.gladys_version.match(/>=\s*(\d+)\.(\d+)\.\d+/);
+  assert.ok(minVersion, 'gladys_version must declare a minimum version');
+  return [Number(minVersion[1]), Number(minVersion[2])];
+}
 
 test('every manifest action has a registered handler, and vice versa', () => {
   const declared = manifest.actions.map((a) => a.key).sort();
@@ -31,9 +45,7 @@ test('declaring catalog categories requires Gladys >= 4.86.0', () => {
   assert.ok(manifest.categories.length >= 1 && manifest.categories.length <= 3);
   assert.equal(new Set(manifest.categories).size, manifest.categories.length);
 
-  const minVersion = manifest.gladys_version.match(/>=\s*(\d+)\.(\d+)\.\d+/);
-  assert.ok(minVersion, 'gladys_version must declare a minimum version');
-  const [, major, minor] = minVersion.map(Number);
+  const [major, minor] = minimumGladysVersion();
   assert.ok(
     major > 4 || (major === 4 && minor >= 86),
     `categories requires gladys_version >= 4.86.0, got "${manifest.gladys_version}"`,
@@ -101,7 +113,12 @@ test('section fields are purely presentational', () => {
 });
 
 test('dynamic selects declare a source and no static options', () => {
-  const actionFields = manifest.actions.flatMap((a) => a.fields ?? []);
+  const actionFields = [
+    ...manifest.actions.flatMap((a) => a.fields ?? []),
+    ...manifest.scene_actions.flatMap((a) => a.fields ?? []),
+    ...manifest.scene_triggers.flatMap((t) => t.fields ?? []),
+    ...manifest.widgets.flatMap((w) => w.settings ?? []),
+  ];
   const dynamicSelects = actionFields.filter((f) => f.source !== undefined);
   assert.ok(dynamicSelects.length > 0);
   for (const field of dynamicSelects) {
@@ -115,4 +132,89 @@ test('the integration declares itself as cloud-only', () => {
   // "prefer local" toggle the integration could never honor.
   assert.deepEqual(manifest.transports, ['cloud']);
   assert.equal(manifest.type, 'device');
+});
+
+test('widgets and scene declarations require Gladys >= 5.1.0', () => {
+  // Gladys 5.1 is the first release reading `widgets`, `scene_triggers` and
+  // `scene_actions`: an older core would refuse the whole manifest.
+  const [major, minor] = minimumGladysVersion();
+  assert.ok(
+    major > 5 || (major === 5 && minor >= 1),
+    `widgets and scenes require gladys_version >= 5.1.0, got "${manifest.gladys_version}"`,
+  );
+});
+
+test('every declared widget has its handlers, and vice versa', () => {
+  assert.deepEqual(manifest.widgets.map((w) => w.key).sort(), Object.keys(WIDGETS).sort());
+  for (const widget of Object.values(WIDGETS)) {
+    assert.equal(typeof widget.get, 'function');
+    assert.equal(typeof widget.action, 'function');
+  }
+});
+
+test('every declared scene action has a handler, and vice versa', () => {
+  assert.deepEqual(
+    manifest.scene_actions.map((a) => a.key).sort(),
+    Object.keys(SCENE_ACTIONS).sort(),
+  );
+});
+
+test('every scene trigger the code fires is declared, and vice versa', () => {
+  assert.deepEqual(
+    manifest.scene_triggers.map((t) => t.key).sort(),
+    Object.values(SCENE_TRIGGERS).sort(),
+  );
+});
+
+test('the scene events carry exactly the declared fields and variables', () => {
+  // The core drops every key it does not know, and reads a declared key
+  // missing from the event as null: both are silent bugs, caught here.
+  const config = normalizeConfig({ access_token: 'pat', country_code: 'FR' });
+  const model = buildDeviceModel(createFakeGladys(), {
+    thinqDevice: WASHTOWER.device,
+    profile: WASHTOWER.profile,
+    config,
+  });
+  const before = observeModel(model, WASHTOWER.state);
+  const after = { online: false, texts: new Map() };
+  for (const [externalId, value] of before.texts) {
+    after.texts.set(externalId, value === 'RUNNING' ? 'END' : value);
+  }
+  const events = detectSceneEvents(model, before, after);
+  assert.deepEqual(
+    [...new Set(events.map((e) => e.key))].sort(),
+    Object.values(SCENE_TRIGGERS).sort(),
+  );
+
+  for (const event of events) {
+    const declaration = manifest.scene_triggers.find((t) => t.key === event.key);
+    const declared = [
+      ...(declaration.fields ?? []).filter((f) => f.type !== 'section'),
+      ...(declaration.variables ?? []),
+    ].map((f) => f.key);
+    assert.deepEqual(Object.keys(event.data).sort(), [...new Set(declared)].sort(), event.key);
+  }
+});
+
+test('the scene action outputs are the declared ones', async () => {
+  const declared = manifest.scene_actions.find((a) => a.key === 'refresh_appliance').outputs;
+  const model = { online: false, bindings: new Map() };
+  const registry = { requireModel: () => model, pollModel: async () => {} };
+  const outputs = await SCENE_ACTIONS.refresh_appliance(null, { registry, fields: {} });
+  assert.deepEqual(Object.keys(outputs).sort(), declared.map((o) => o.key).sort());
+});
+
+test('scene and widget keys follow the core rules', () => {
+  for (const widget of manifest.widgets) {
+    assert.match(widget.key, /^[a-z0-9_]{2,32}$/);
+    for (const text of Object.values(widget.label)) {
+      assert.ok(text.length >= 3 && text.length <= 30, `widget label "${text}" must be 3-30 chars`);
+    }
+    for (const text of Object.values(widget.description ?? {})) {
+      assert.ok(text.length <= 100, `widget description "${text}" must be <= 100 chars`);
+    }
+  }
+  for (const declaration of [...manifest.scene_triggers, ...manifest.scene_actions]) {
+    assert.match(declaration.key, /^[a-z0-9_]{1,40}$/);
+  }
 });

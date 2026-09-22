@@ -17,8 +17,6 @@
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
-import { parseCommandValue } from './devices/index.js';
-import { buildControlPayload } from './devices/profile.js';
 
 const logger = createLogger({ name: 'actions' });
 
@@ -36,14 +34,6 @@ function describeAcceptedValues(descriptor) {
     return `${values.min}..${values.max}${step}`;
   }
   return descriptor.valueType;
-}
-
-function requireModel(registry, externalId) {
-  const model = registry.models.get(externalId);
-  if (!model) {
-    throw new Error('This appliance is unknown, run "Refresh the appliance list" first.');
-  }
-  return model;
 }
 
 export const ACTIONS = {
@@ -72,7 +62,7 @@ export const ACTIONS = {
   async refresh_devices(gladys, { registry, config }) {
     const devices = await registry.discover(gladys, config);
     await gladys.publishDiscoveredDevices(devices);
-    await registry.pollAll(gladys);
+    await registry.pollAll(gladys, { silent: true });
     return {
       en: `${devices.length} appliance(s) published to Gladys.`,
       fr: `${devices.length} appareil(s) publié(s) dans Gladys.`,
@@ -81,7 +71,7 @@ export const ACTIONS = {
 
   /** List what can be commanded on one appliance. */
   async list_properties(gladys, { registry, fields }) {
-    const model = requireModel(registry, fields.device);
+    const model = registry.requireModel(fields.device);
     const writable = [...model.bindings.values()]
       .filter((binding) => binding.descriptor.writable)
       .map(
@@ -106,36 +96,7 @@ export const ACTIONS = {
 
   /** Send an arbitrary ThinQ property on one appliance. */
   async send_command(gladys, { registry, fields }) {
-    const api = registry.requireApi();
-    const model = requireModel(registry, fields.device);
-    const binding = registry.findBinding(model, fields.property);
-
-    if (!binding) {
-      throw new Error(
-        `${model.name} has no property "${fields.property}". Use "List the properties" to see the exact names.`,
-      );
-    }
-    if (!binding.descriptor.writable) {
-      throw new Error(`"${binding.descriptor.path}" is read-only on ${model.name}.`);
-    }
-
-    const value = parseCommandValue(fields.value);
-    const accepted = binding.descriptor.writeValues;
-    if (Array.isArray(accepted) && accepted.length > 0 && !accepted.includes(value)) {
-      throw new Error(
-        `"${value}" is not accepted for ${binding.descriptor.path}. Allowed: ${accepted.join(' | ')}.`,
-      );
-    }
-
-    const payload = buildControlPayload(binding.descriptor, value);
-    logger.info(`send_command -> ${model.name} ${JSON.stringify(payload)}`);
-    await api.controlDevice(model.deviceId, payload);
-
-    // Read the appliance back so the features reflect what actually happened.
-    await registry
-      .pollModel(gladys, model)
-      .catch((err) => logger.warn('Post-command read failed', err));
-
+    const { model, binding, value } = await registry.sendProperty(gladys, fields);
     return {
       en: `${binding.descriptor.path} set to ${value} on ${model.name}.`,
       fr: `${binding.descriptor.path} réglé sur ${value} sur ${model.name}.`,
