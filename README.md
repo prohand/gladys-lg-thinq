@@ -88,6 +88,29 @@ Configuration buttons instead: **List the properties** prints what an appliance
 accepts and with which values, **Send a command** sends it, validated against
 the profile first.
 
+## Widgets and scenes (Gladys 5.1)
+
+Declared in the manifest, served by the SDK handlers — no core change:
+
+- **Widgets** — `appliance` (one appliance: live tiles bound to its features,
+  a status list of what it is doing, On/Off bound to its power feature, a
+  Refresh button) and `overview` (every added appliance, one status line
+  each). The content is rebuilt from the last read, never from a fresh LG
+  call; the registry asks the core to re-pull it (`requestWidgetRefresh`)
+  when a read changes what it displays.
+- **Scene triggers** — `cycle_finished`, `run_state_changed`,
+  `connection_changed`. They are _transitions_ between two reads of an
+  appliance (`src/sceneTriggers.js`): the first read only records, and the
+  last observation survives a re-discovery so nothing is replayed or lost.
+- **Scene actions** — `send_command` (the Configuration escape hatch, from a
+  scene) and `refresh_appliance` (read now, output `online`, `run_state`,
+  `remaining_minutes`).
+
+The reads caused by an action (scene action, widget button, command) are
+**silent**: they publish the states but leave the observations untouched, so
+no scene event is ever fired as the consequence of an action — the next
+regular read reports the transition instead.
+
 ## Project structure
 
 ```
@@ -97,6 +120,9 @@ the profile first.
 │  ├─ config.js                      # config defaults + normalization
 │  ├─ pollFrequency.js               # the cadences Gladys accepts (ms enum)
 │  ├─ actions.js                     # the four Configuration-screen buttons
+│  ├─ sceneTriggers.js               # read -> read transitions -> scene events
+│  ├─ sceneActions.js                # the two scene-editor actions
+│  ├─ widgets.js                     # the two dashboard widgets (content + buttons)
 │  ├─ thinq/                         # ← everything that talks to LG
 │  │  ├─ api.js                      #   REST client (devices, profile, state, control)
 │  │  ├─ regions.js                  #   country -> regional API host
@@ -107,9 +133,10 @@ the profile first.
 │     ├─ index.js                    #   the live registry (discovery + dispatch)
 │     ├─ profile.js                  #   profile/state flattening, control payloads
 │     ├─ featureMap.js               #   ThinQ property -> Gladys feature rules
+│     ├─ runState.js                 #   run state: finished?, translation, color
 │     └─ builder.js                  #   appliance + profile -> Gladys device
 ├─ docs/{en,fr}.md                   # user documentation, re-hosted by Gladys
-├─ gladys-assistant-integration.json # manifest (config form, actions, image)
+├─ gladys-assistant-integration.json # manifest (config form, actions, widgets, scenes)
 └─ Dockerfile                        # Node 24 Alpine, read-only rootfs ready
 ```
 
@@ -180,7 +207,8 @@ picks up the new version.
 
 - **Polling only.** LG offers real-time events over AWS IoT MQTT (client
   certificate registration + `GET /route`); this version reads on an interval
-  instead. A cycle that ends between two polls is seen at the next one.
+  instead. A cycle that ends between two polls is seen at the next one — and
+  so is the matching scene trigger.
 - **The refresh interval is enforced here, not by Gladys.** `poll_frequency`
   only accepts the values of the Gladys `DEVICE_POLL_FREQUENCIES` enum, in
   milliseconds, the slowest being one minute — anything else is refused by the

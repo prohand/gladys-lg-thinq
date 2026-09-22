@@ -14,6 +14,7 @@ tout moment.
 
 Il vous faut :
 
+- **Gladys 5.1** ou plus récent ;
 - un **compte LG ThinQ** avec vos appareils déjà ajoutés dans l'application
   mobile LG ThinQ (cette intégration découvre les appareils, elle ne les appaire
   pas) ;
@@ -100,6 +101,64 @@ capteurs) ; tout le reste est accessible par deux boutons de l'onglet
    propriété et la valeur. La commande est vérifiée contre le profil avant
    l'envoi : une faute de frappe est refusée avec la liste des valeurs
    autorisées, plutôt qu'un échec silencieux.
+
+## Widgets du tableau de bord
+
+Dans un tableau de bord, **Modifier** → ajouter une box → catégorie des
+intégrations :
+
+- **Appareil LG** — un appareil choisi dans les réglages de la box : ses valeurs
+  en direct (températures, humidité, temps restant…), ce qu'il fait (état,
+  mode), sa connexion au cloud LG, et les boutons **Marche** / **Arrêt** et
+  **Actualiser** ;
+- **Appareils LG** — tous vos appareils LG sur une seule carte, avec pour chacun
+  son état (« En cours », « Terminé », « Injoignable »…) et un bouton
+  **Actualiser**.
+
+Les valeurs suivent l'intervalle de rafraîchissement ; **Actualiser** interroge
+LG tout de suite. Seuls les appareils ajoutés dans Gladys sont affichés.
+
+## Scènes
+
+### Déclencheurs
+
+Dans l'éditeur de scènes, catégorie **Intégrations** :
+
+| Déclencheur                                    | Quand                                                              |
+| ---------------------------------------------- | ------------------------------------------------------------------ |
+| **Appareil LG : cycle terminé**                | Un lave-linge, sèche-linge, lave-vaisselle ou four finit son cycle |
+| **Appareil LG : changement d'état**            | L'état de fonctionnement change (`RUNNING`, `RINSING`, `END`…)     |
+| **Appareil LG : connexion perdue / retrouvée** | L'appareil quitte ou retrouve le cloud LG                          |
+
+Chaque filtre laissé vide veut dire « n'importe lequel ». Le filtre **Nouvel
+état** attend la valeur LG exacte, en majuscules (`END`, `RUNNING`…) :
+**Lister les propriétés** donne les valeurs de chaque appareil.
+
+Les actions suivantes de la scène peuvent réutiliser le nom de l'appareil, le
+sous-appareil (lave-linge ou sèche-linge d'une WashTower), le nouvel et
+l'ancien état. Exemple : « Cycle terminé » → envoyer un message
+« {{triggerEvent.data.device_name}} a terminé ».
+
+Bon à savoir :
+
+- les changements sont vus **à la lecture suivante** de l'appareil : un cycle
+  qui se termine est signalé au plus tard après un intervalle de
+  rafraîchissement ;
+- au démarrage de l'intégration, rien n'est déclenché : il faut un « avant » et
+  un « après » pour parler de changement ;
+- une lecture provoquée par une action (bouton, scène, commande) ne déclenche
+  rien sur le moment — c'est la lecture régulière suivante qui le fait. Cela
+  évite qu'une scène se relance elle-même en boucle.
+
+### Actions
+
+| Action                                 | Ce qu'elle fait                                                                                             |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Appareil LG : envoyer une commande** | Comme le bouton **Envoyer une commande** : n'importe quelle propriété, vérifiée avant l'envoi               |
+| **Appareil LG : lire l'état**          | Lit l'appareil tout de suite et donne aux actions suivantes : connecté (oui/non), état, temps restant (min) |
+
+Exemple : chaque soir à 22 h, « Lire l'état » du lave-linge → condition
+« état = `END` » → notification « Pensez à vider le lave-linge ».
 
 ## Dépannage
 

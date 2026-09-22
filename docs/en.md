@@ -12,6 +12,7 @@ only credential is a token you create yourself and can revoke at any time.
 
 You need:
 
+- **Gladys 5.1** or newer;
 - an **LG ThinQ account** with your appliances already added in the LG ThinQ
   mobile app (this integration discovers appliances, it does not pair them);
 - appliances that are **online** in the app;
@@ -93,6 +94,59 @@ through two buttons in the **Configuration** tab:
 2. **Send a command** — pick the appliance, paste the property name and the
    value. The command is checked against the profile before being sent, so a
    typo is refused with the list of allowed values instead of a silent failure.
+
+## Dashboard widgets
+
+In a dashboard, **Edit** → add a box → integrations category:
+
+- **LG appliance** — one appliance, picked in the box settings: its live values
+  (temperatures, humidity, time left…), what it is doing (state, mode), its
+  connection to the LG cloud, and the **On** / **Off** and **Refresh** buttons;
+- **LG appliances** — every LG appliance on one card, each with its state
+  ("Running", "End", "Unreachable"…) and a **Refresh** button.
+
+Values follow the refresh interval; **Refresh** asks LG right away. Only the
+appliances added to Gladys are shown.
+
+## Scenes
+
+### Triggers
+
+In the scene editor, **Integrations** category:
+
+| Trigger                                  | When                                                   |
+| ---------------------------------------- | ------------------------------------------------------ |
+| **LG appliance: cycle finished**         | A washer, dryer, dishwasher or oven finishes its cycle |
+| **LG appliance: state changed**          | The run state changes (`RUNNING`, `RINSING`, `END`…)   |
+| **LG appliance: connection lost / back** | The appliance leaves or comes back to the LG cloud     |
+
+A filter left empty means "any". The **New state** filter expects the exact LG
+value, in capitals (`END`, `RUNNING`…): **List the properties** shows the values
+of each appliance.
+
+The next actions of the scene can reuse the appliance name, the sub-appliance
+(washer or dryer of a WashTower), the new and the previous state. Example:
+"Cycle finished" → send a message "{{triggerEvent.data.device_name}} is done".
+
+Good to know:
+
+- changes are seen **at the next read** of the appliance: a cycle that ends is
+  reported at most one refresh interval later;
+- nothing fires when the integration starts: a change needs a "before" and an
+  "after";
+- a read caused by an action (button, scene, command) fires nothing right away —
+  the next regular read does. This keeps a scene from re-triggering itself in
+  a loop.
+
+### Actions
+
+| Action                           | What it does                                                                                       |
+| -------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **LG appliance: send a command** | Like the **Send a command** button: any property, checked before being sent                        |
+| **LG appliance: read the state** | Reads the appliance now and hands the next actions: connected (yes/no), run state, time left (min) |
+
+Example: every evening at 10 pm, "Read the state" of the washer → condition
+"run state = `END`" → notification "Empty the washer".
 
 ## Troubleshooting
 

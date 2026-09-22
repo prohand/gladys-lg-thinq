@@ -7,6 +7,8 @@
 //   - publishDiscoveredDevices        -> recorded so tests can assert them
 //   - publishTransports               -> recorded so tests can assert them
 //   - setConnectionStatus             -> recorded so tests can assert them
+//   - publishSceneEvent               -> recorded so tests can assert them
+//   - requestWidgetRefresh            -> recorded so tests can assert them
 //   - devices                         -> the appliances the user added
 // This lets us test the mapping and the dispatch without a running Gladys
 // server, a WebSocket, or an LG account.
@@ -17,12 +19,16 @@ export function createFakeGladys({ selector = 'lg-thinq', devices } = {}) {
   const discovered = [];
   const transports = [];
   const connectionStatuses = [];
+  const sceneEvents = [];
+  const widgetRefreshes = [];
 
   return {
     published,
     discovered,
     transports,
     connectionStatuses,
+    sceneEvents,
+    widgetRefreshes,
     // The devices the user actually added, as the SDK keeps them. Left
     // undefined by default: "the SDK has not synchronized that list yet".
     ...(devices === undefined ? {} : { devices }),
@@ -58,6 +64,14 @@ export function createFakeGladys({ selector = 'lg-thinq', devices } = {}) {
 
     async setConnectionStatus(connected, message) {
       connectionStatuses.push({ connected, message });
+    },
+
+    async publishSceneEvent(key, data) {
+      sceneEvents.push({ key, data });
+    },
+
+    requestWidgetRefresh(key) {
+      widgetRefreshes.push(key);
     },
   };
 }

@@ -8,15 +8,10 @@
   },
   "version": "1.0.1",
   "docker_image": "ghcr.io/prohand/gladys-lg-thinq:1.0.1",
-  "gladys_version": ">=4.86.0",
+  "gladys_version": ">=5.1.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-lg-thinq/main/cover.png",
-  "categories": [
-    "appliances",
-    "climate"
-  ],
-  "transports": [
-    "cloud"
-  ],
+  "categories": ["appliances", "climate"],
+  "transports": ["cloud"],
   "config_schema": [
     {
       "key": "credentials",
@@ -1216,6 +1211,342 @@
             "fr": "COOL"
           },
           "required": true
+        }
+      ]
+    }
+  ],
+  "widgets": [
+    {
+      "key": "appliance",
+      "label": {
+        "en": "LG appliance",
+        "fr": "Appareil LG"
+      },
+      "description": {
+        "en": "Live values, current state and on/off of one LG appliance.",
+        "fr": "Valeurs en direct, état en cours et marche/arrêt d'un appareil LG."
+      },
+      "icon": "cpu",
+      "settings": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Appliance",
+            "fr": "Appareil"
+          },
+          "required": true
+        }
+      ],
+      "action_timeout_seconds": 30
+    },
+    {
+      "key": "overview",
+      "label": {
+        "en": "LG appliances",
+        "fr": "Appareils LG"
+      },
+      "description": {
+        "en": "Every LG appliance of the house on one card, with what it is doing.",
+        "fr": "Tous les appareils LG de la maison sur une carte, avec ce qu'ils font."
+      },
+      "icon": "grid",
+      "action_timeout_seconds": 120
+    }
+  ],
+  "scene_triggers": [
+    {
+      "key": "cycle_finished",
+      "label": {
+        "en": "LG appliance: cycle finished",
+        "fr": "Appareil LG : cycle terminé"
+      },
+      "description": {
+        "en": "A washer, dryer, dishwasher or oven has just finished its cycle.",
+        "fr": "Un lave-linge, sèche-linge, lave-vaisselle ou four vient de terminer son cycle."
+      },
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Appliance",
+            "fr": "Appareil"
+          },
+          "description": {
+            "en": "Leave empty for any appliance.",
+            "fr": "Laissez vide pour n'importe quel appareil."
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "device_name",
+          "type": "string",
+          "label": {
+            "en": "Appliance name",
+            "fr": "Nom de l'appareil"
+          }
+        },
+        {
+          "key": "location",
+          "type": "string",
+          "label": {
+            "en": "Sub-appliance (washer, dryer…)",
+            "fr": "Sous-appareil (lave-linge, sèche-linge…)"
+          }
+        }
+      ]
+    },
+    {
+      "key": "run_state_changed",
+      "label": {
+        "en": "LG appliance: state changed",
+        "fr": "Appareil LG : changement d'état"
+      },
+      "description": {
+        "en": "The run state of an appliance changed (RUNNING, RINSING, END…).",
+        "fr": "L'état de fonctionnement d'un appareil a changé (RUNNING, RINSING, END…)."
+      },
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Appliance",
+            "fr": "Appareil"
+          },
+          "description": {
+            "en": "Leave empty for any appliance.",
+            "fr": "Laissez vide pour n'importe quel appareil."
+          }
+        },
+        {
+          "key": "state",
+          "type": "string",
+          "label": {
+            "en": "New state",
+            "fr": "Nouvel état"
+          },
+          "description": {
+            "en": "The LG value, in capitals (e.g. RUNNING, END). Leave empty for any state. \"List the properties\" shows the values of each appliance.",
+            "fr": "La valeur LG, en majuscules (ex. RUNNING, END). Laissez vide pour n'importe quel état. « Lister les propriétés » affiche les valeurs de chaque appareil."
+          },
+          "placeholder": {
+            "en": "END",
+            "fr": "END"
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "device_name",
+          "type": "string",
+          "label": {
+            "en": "Appliance name",
+            "fr": "Nom de l'appareil"
+          }
+        },
+        {
+          "key": "location",
+          "type": "string",
+          "label": {
+            "en": "Sub-appliance (washer, dryer…)",
+            "fr": "Sous-appareil (lave-linge, sèche-linge…)"
+          }
+        },
+        {
+          "key": "state",
+          "type": "string",
+          "label": {
+            "en": "New state",
+            "fr": "Nouvel état"
+          }
+        },
+        {
+          "key": "previous_state",
+          "type": "string",
+          "label": {
+            "en": "Previous state",
+            "fr": "État précédent"
+          }
+        }
+      ]
+    },
+    {
+      "key": "connection_changed",
+      "label": {
+        "en": "LG appliance: connection lost / back",
+        "fr": "Appareil LG : connexion perdue / retrouvée"
+      },
+      "description": {
+        "en": "An appliance left or came back to the LG cloud.",
+        "fr": "Un appareil a quitté ou retrouvé le cloud LG."
+      },
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Appliance",
+            "fr": "Appareil"
+          },
+          "description": {
+            "en": "Leave empty for any appliance.",
+            "fr": "Laissez vide pour n'importe quel appareil."
+          }
+        },
+        {
+          "key": "status",
+          "type": "select",
+          "label": {
+            "en": "Status",
+            "fr": "Statut"
+          },
+          "description": {
+            "en": "Leave empty for both.",
+            "fr": "Laissez vide pour les deux."
+          },
+          "options": [
+            {
+              "value": "offline",
+              "label": {
+                "en": "Connection lost",
+                "fr": "Connexion perdue"
+              }
+            },
+            {
+              "value": "online",
+              "label": {
+                "en": "Connection back",
+                "fr": "Connexion retrouvée"
+              }
+            }
+          ]
+        }
+      ],
+      "variables": [
+        {
+          "key": "device_name",
+          "type": "string",
+          "label": {
+            "en": "Appliance name",
+            "fr": "Nom de l'appareil"
+          }
+        },
+        {
+          "key": "status",
+          "type": "string",
+          "label": {
+            "en": "Status (online / offline)",
+            "fr": "Statut (online / offline)"
+          }
+        }
+      ]
+    }
+  ],
+  "scene_actions": [
+    {
+      "key": "send_command",
+      "label": {
+        "en": "LG appliance: send a command",
+        "fr": "Appareil LG : envoyer une commande"
+      },
+      "description": {
+        "en": "Set any ThinQ property, including the ones with no Gladys feature (job mode, fan step, course).",
+        "fr": "Règle n'importe quelle propriété ThinQ, y compris celles sans fonctionnalité Gladys (mode, vitesse, programme)."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Appliance",
+            "fr": "Appareil"
+          },
+          "required": true
+        },
+        {
+          "key": "property",
+          "type": "string",
+          "label": {
+            "en": "Property",
+            "fr": "Propriété"
+          },
+          "placeholder": {
+            "en": "airConJobMode.currentJobMode",
+            "fr": "airConJobMode.currentJobMode"
+          },
+          "required": true
+        },
+        {
+          "key": "value",
+          "type": "string",
+          "label": {
+            "en": "Value",
+            "fr": "Valeur"
+          },
+          "placeholder": {
+            "en": "COOL",
+            "fr": "COOL"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "key": "refresh_appliance",
+      "label": {
+        "en": "LG appliance: read the state",
+        "fr": "Appareil LG : lire l'état"
+      },
+      "description": {
+        "en": "Read an appliance now, and pass its state to the next actions of the scene.",
+        "fr": "Lit un appareil tout de suite, et transmet son état aux actions suivantes de la scène."
+      },
+      "timeout_seconds": 30,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "Appliance",
+            "fr": "Appareil"
+          },
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "online",
+          "type": "boolean",
+          "label": {
+            "en": "Connected",
+            "fr": "Connecté"
+          }
+        },
+        {
+          "key": "run_state",
+          "type": "string",
+          "label": {
+            "en": "Run state",
+            "fr": "État de fonctionnement"
+          }
+        },
+        {
+          "key": "remaining_minutes",
+          "type": "number",
+          "label": {
+            "en": "Remaining time (minutes)",
+            "fr": "Temps restant (minutes)"
+          }
         }
       ]
     }

@@ -19,10 +19,21 @@ import { isConfigured, normalizeConfig } from './src/config.js';
 import { DeviceRegistry } from './src/devices/index.js';
 import { SCHEDULER_POLL_FREQUENCY } from './src/pollFrequency.js';
 import { ACTIONS } from './src/actions.js';
+import { SCENE_ACTIONS } from './src/sceneActions.js';
+import { WIDGETS } from './src/widgets.js';
 import { ThinqApiError } from './src/thinq/errors.js';
 
 const gladys = new GladysIntegration();
-const registry = new DeviceRegistry();
+// When a read changes what an appliance displays (connection, run state,
+// mode), the widgets are asked to re-pull their content instead of waiting
+// for it to expire. The core rate-limits the nudge, nothing to throttle here.
+const registry = new DeviceRegistry({
+  onChange: () => {
+    for (const key of Object.keys(WIDGETS)) {
+      gladys.requestWidgetRefresh(key);
+    }
+  },
+});
 
 // Current configuration (hot-reloaded through onConfigUpdated).
 let config = normalizeConfig();
@@ -77,6 +88,26 @@ gladys.onDeviceCreated(async (device) => {
 // --- Manifest actions: buttons in the Configuration screen -------------------
 for (const [key, handler] of Object.entries(ACTIONS)) {
   gladys.onAction(key, (fields) => handler(gladys, { registry, config, fields }));
+}
+
+// --- Scene actions: run by a scene of the user ------------------------------
+// The scene triggers need no handler: the registry fires them from the reads.
+for (const [key, handler] of Object.entries(SCENE_ACTIONS)) {
+  gladys.onSceneAction(key, async (fields) => {
+    const outputs = await handler(gladys, { registry, fields });
+    await publishTransports();
+    return outputs;
+  });
+}
+
+// --- Dashboard widgets --------------------------------------------------------
+for (const [key, widget] of Object.entries(WIDGETS)) {
+  gladys.onWidgetGet(key, ({ settings }) => widget.get(gladys, { registry, config, settings }));
+  gladys.onWidgetAction(key, async (actionKey, params, { settings }) => {
+    const message = await widget.action(gladys, { registry, actionKey, params, settings });
+    await publishTransports();
+    return message;
+  });
 }
 
 // --- Configuration updated by the user ---------------------------------------
