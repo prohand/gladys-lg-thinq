@@ -48,6 +48,9 @@ export const CLIMATE_DEVICE_TYPES = new Set(['air-conditioner', 'system-boiler']
 /** Appliances whose target temperature is a hot water setpoint. */
 export const WATER_HEATER_DEVICE_TYPES = new Set(['water-heater']);
 
+/** Longest slug derived from an unknown device type. */
+const MAX_SLUG_LENGTH = 24;
+
 /**
  * Slug of a ThinQ device type. Unknown families (LG keeps adding some) fall
  * back to a slug derived from the raw value, so a new appliance still gets a
@@ -64,6 +67,9 @@ export function deviceTypeSlug(thinqDeviceType) {
       .replace(/^DEVICE_/, '')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
+      // Kept short: it goes into the external ids, which a widget setting
+      // caps at 100 characters.
+      .slice(0, MAX_SLUG_LENGTH)
       .replace(/^-+|-+$/g, '') || 'unknown'
   );
 }

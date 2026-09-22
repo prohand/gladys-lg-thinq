@@ -12,6 +12,7 @@ import {
   buildDeviceModel,
   buildStates,
   isPublishableFeature,
+  shortDeviceId,
 } from '../src/devices/builder.js';
 import { normalizeConfig } from '../src/config.js';
 import { SCHEDULER_POLL_FREQUENCY, isValidPollFrequency } from '../src/pollFrequency.js';
@@ -34,10 +35,30 @@ const featureNamed = (model, name) => model.device.features.find((f) => f.name =
 const featureEndingWith = (model, suffix) =>
   model.device.features.find((f) => f.external_id.endsWith(suffix));
 
+test('the device external id fits a widget setting (100 characters)', () => {
+  // A real ThinQ deviceId is 64 characters long, and a store selector is
+  // `ext-<owner>-<repo>`: the full id used to overflow the widget setting.
+  const gladys = createFakeGladys({ selector: 'ext-prohand-gladys-lg-thinq' });
+  const model = buildDeviceModel(gladys, {
+    thinqDevice: {
+      ...REFRIGERATOR.device,
+      deviceId: 'a'.repeat(64),
+      deviceInfo: { ...REFRIGERATOR.device.deviceInfo, deviceType: 'DEVICE_KIMCHI_REFRIGERATOR' },
+    },
+    profile: REFRIGERATOR.profile,
+    config,
+  });
+  assert.ok(model.externalId.length <= 100, model.externalId);
+  assert.equal(model.deviceId, 'a'.repeat(64));
+  assert.equal(shortDeviceId('a'.repeat(64)), shortDeviceId('a'.repeat(64)));
+  assert.notEqual(shortDeviceId('a'.repeat(64)), shortDeviceId('b'.repeat(64)));
+  assert.match(shortDeviceId('TQS-AC-0001'), /^[0-9a-f]{16}$/);
+});
+
 test('the device carries the LG alias and a stable external id', () => {
   const { model } = build(AIR_CONDITIONER);
   assert.equal(model.device.name, 'Salon');
-  assert.equal(model.externalId, 'ext:lg-thinq:air-conditioner:TQS-AC-0001');
+  assert.equal(model.externalId, `ext:lg-thinq:air-conditioner:${shortDeviceId('TQS-AC-0001')}`);
   // Gladys validates this against its own enum, in milliseconds: the user's
   // interval (300s here) would be rejected by the host API.
   assert.equal(model.device.poll_frequency, SCHEDULER_POLL_FREQUENCY);
@@ -418,7 +439,7 @@ test('an unknown appliance family still produces a usable device', () => {
   });
 
   assert.equal(model.deviceType, 'smart-kettle');
-  assert.equal(model.externalId, 'ext:lg-thinq:smart-kettle:TQS-NEW-9');
+  assert.equal(model.externalId, `ext:lg-thinq:smart-kettle:${shortDeviceId('TQS-NEW-9')}`);
   assert.equal(featureNamed(model, 'On/Off').category, DEVICE_FEATURE_CATEGORIES.SWITCH);
   // The range has no meaning we can guess, so it stays hidden by default.
   assert.equal(featureNamed(model, 'Power level'), undefined);

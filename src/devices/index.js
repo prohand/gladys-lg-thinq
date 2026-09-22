@@ -45,6 +45,36 @@ export function createdExternalIds(gladys) {
   return new Set(gladys.devices.map((device) => device?.external_id).filter(Boolean));
 }
 
+/**
+ * Up to 2.0.0 the external ids held the full ThinQ `deviceId` (64
+ * characters), too long for a widget setting. Those appliances are no longer
+ * matched: tell the user to remove them and add them again from Discovery.
+ * Returns the names of the appliances concerned.
+ */
+export function warnLegacyDevices(gladys, models) {
+  if (!Array.isArray(gladys?.devices)) {
+    return [];
+  }
+  const legacy = [];
+  for (const device of gladys.devices) {
+    const externalId = device?.external_id;
+    if (!externalId || models.has(externalId)) {
+      continue;
+    }
+    const model = [...models.values()].find((m) => externalId.endsWith(`:${m.deviceId}`));
+    if (model) {
+      legacy.push(device.name ?? model.name);
+    }
+  }
+  if (legacy.length > 0) {
+    logger.warn(
+      `${legacy.join(', ')}: added with an old identifier, no longer updated. ` +
+        'Delete them in Gladys, then add them again from the Discovery tab.',
+    );
+  }
+  return legacy;
+}
+
 export class DeviceRegistry {
   /**
    * @param {object} [options]
@@ -134,6 +164,7 @@ export class DeviceRegistry {
     }
 
     this.models = models;
+    warnLegacyDevices(gladys, models);
     return this.discoveredDevices();
   }
 

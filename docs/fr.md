@@ -182,6 +182,13 @@ n'avait rien à remonter à cet instant, en général parce que l'appareil est h
 réseau (vérifiez le badge orange). Le rafraîchissement suivant remplit les
 fonctionnalités dès que LG répond de nouveau.
 
+**Le widget Appareil LG affiche « settings.device: must be at most 100
+characters »** — l'appareil a été ajouté avec une version 2.0.0 ou plus
+ancienne, dont l'identifiant était trop long pour un widget. Après la mise à
+jour, supprimez l'appareil dans Gladys, rajoutez-le depuis l'onglet
+**Découverte**, puis choisissez-le à nouveau dans les réglages du widget.
+L'historique de l'ancien appareil et les scènes qui l'utilisent sont à refaire.
+
 **« Quota d'appels dépassé »** — augmentez l'intervalle de rafraîchissement. LG
 compte les appels de chaque client, et un rafraîchissement coûte un appel par
 appareil.

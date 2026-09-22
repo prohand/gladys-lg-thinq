@@ -167,6 +167,13 @@ the moment you add it, so this means LG had nothing to report at that instant:
 the appliance is usually off the network (check for the orange badge). The next
 refresh fills the features as soon as LG answers again.
 
+**The LG appliance widget shows "settings.device: must be at most 100
+characters"** — the appliance was added with version 2.0.0 or older, whose
+identifier was too long for a widget. After the update, delete the appliance in
+Gladys, add it again from the **Discovery** tab, then pick it again in the
+widget settings. The history of the old device and the scenes using it must be
+redone.
+
 **"Call quota exceeded"** — increase the refresh interval. LG counts the calls
 of each client, and one refresh costs one call per appliance.
 
