@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DEVICE_TRANSPORTS } from '@gladysassistant/integration-sdk';
-import { DeviceRegistry, parseCommandValue } from '../src/devices/index.js';
+import { DeviceRegistry, parseCommandValue, warnLegacyDevices } from '../src/devices/index.js';
 import { ACTIONS } from '../src/actions.js';
 import { ThinqApiError, THINQ_ERROR_CODES } from '../src/thinq/errors.js';
 import { normalizeConfig } from '../src/config.js';
@@ -66,6 +66,24 @@ test('discovery turns the account into Gladys devices', async () => {
   assert.ok(devices.every((d) => d.poll_frequency === SCHEDULER_POLL_FREQUENCY));
   assert.ok(devices.every((d) => d.should_poll === true));
   assert.ok(devices.every((d) => d.features.length > 0));
+});
+
+test('an appliance added with the old, long external id is reported', async () => {
+  const { registry, gladys } = buildRegistry({
+    devices: [
+      {
+        name: 'Salon',
+        external_id: `ext:lg-thinq:air-conditioner:${AIR_CONDITIONER.device.deviceId}`,
+      },
+      { name: 'Autre', external_id: 'ext:zwave:1' },
+    ],
+  });
+  await registry.discover(gladys, config);
+  assert.deepEqual(warnLegacyDevices(gladys, registry.models), ['Salon']);
+
+  const current = [...registry.models.keys()].map((external_id) => ({ external_id }));
+  assert.deepEqual(warnLegacyDevices({ devices: current }, registry.models), []);
+  assert.deepEqual(warnLegacyDevices({}, registry.models), []);
 });
 
 test('one unreadable appliance does not lose the others', async () => {

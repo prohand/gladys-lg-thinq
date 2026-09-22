@@ -7,6 +7,7 @@
 // look up when Gladys polls or sends a command.
 // -----------------------------------------------------------------------------
 
+import { createHash } from 'node:crypto';
 import {
   createLogger,
   DEVICE_FEATURE_CATEGORIES,
@@ -19,6 +20,25 @@ import { buildControlPayload, flattenProfile, humanize, readStateValue } from '.
 import { defaultBounds, mapProperty } from './featureMap.js';
 
 const logger = createLogger({ name: 'device-builder' });
+
+/** Length of the short appliance id used in the external ids. */
+const SHORT_DEVICE_ID_LENGTH = 16;
+
+/**
+ * Short, stable id of an appliance, for its Gladys external ids.
+ *
+ * The ThinQ `deviceId` is 64 characters long, and Gladys caps every widget
+ * setting at 100 characters: `ext:<selector>:<type>:<deviceId>` did not fit,
+ * so the appliance widget was refused ("settings.device: must be at most 100
+ * characters"). 16 hex characters of its SHA-256 keep it unique in a house.
+ * @param {string} deviceId the ThinQ `deviceId`
+ */
+export function shortDeviceId(deviceId) {
+  return createHash('sha256')
+    .update(String(deviceId))
+    .digest('hex')
+    .slice(0, SHORT_DEVICE_ID_LENGTH);
+}
 
 /**
  * LG exposes most temperatures twice, once in Celsius and once in Fahrenheit
@@ -205,7 +225,7 @@ export function buildDeviceModel(gladys, { thinqDevice, profile, config }) {
   const deviceId = thinqDevice.deviceId;
   const info = thinqDevice.deviceInfo ?? {};
   const deviceType = deviceTypeSlug(info.deviceType);
-  const ids = gladys.externalIds(deviceType, deviceId);
+  const ids = gladys.externalIds(deviceType, shortDeviceId(deviceId));
   const name = info.alias || info.modelName || `LG ${humanize(deviceType)}`;
 
   const descriptors = selectTemperatureVariants(flattenProfile(profile), config.temperature_unit);
