@@ -6,6 +6,8 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-06
+
 ### Added
 
 - `SECURITY.md`: how to report a vulnerability.
@@ -54,7 +56,8 @@ First public release.
 - Read an appliance the moment the user adds it
 - Actually schedule the refresh of the appliances
 
-[Unreleased]: https://github.com/prohand/gladys-lg-thinq/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/prohand/gladys-lg-thinq/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/prohand/gladys-lg-thinq/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/prohand/gladys-lg-thinq/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/prohand/gladys-lg-thinq/compare/v1.0.1...v2.0.0
 [1.0.1]: https://github.com/prohand/gladys-lg-thinq/releases/tag/v1.0.1
