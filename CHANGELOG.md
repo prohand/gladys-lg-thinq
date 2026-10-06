@@ -1,0 +1,55 @@
+# Changelog
+
+All notable changes to this integration are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
+[semantic versioning](https://semver.org/), bumped by the Release workflow.
+
+## [Unreleased]
+
+### Added
+
+- `SECURITY.md`: how to report a vulnerability.
+- `CHANGELOG.md`, rebuilt from the release history.
+- `CLAUDE.md`: guide for contributors and coding agents (commands, architecture, invariants).
+
+### Changed
+
+- Development dependencies updated to their latest versions (ESLint 10.12, Prettier 3.9.9, globals 17.13).
+- Manifest re-formatted with Prettier, so the CI format check passes again.
+
+## [2.0.1] - 2026-09-22
+
+### Fixed
+
+- Shorten the device external ids so the appliance widget accepts them
+
+## [2.0.0] - 2026-09-22
+
+### Added
+
+- Dashboard widgets, scene triggers and scene actions (Gladys 5.1)
+
+## [1.0.1] - 2026-08-15
+
+First public release.
+
+### Added
+
+- LG ThinQ external integration for Gladys Assistant
+- Name the verbose numeric features, and target Gladys 4.86
+
+### Changed
+
+- Drop the environment catalog category
+
+### Fixed
+
+- Publish a poll_frequency Gladys accepts
+- Publish the feature bounds Gladys stores as NOT NULL
+- Read an appliance the moment the user adds it
+- Actually schedule the refresh of the appliances
+
+[Unreleased]: https://github.com/prohand/gladys-lg-thinq/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/prohand/gladys-lg-thinq/compare/v2.0.0...v2.0.1
+[2.0.0]: https://github.com/prohand/gladys-lg-thinq/compare/v1.0.1...v2.0.0
+[1.0.1]: https://github.com/prohand/gladys-lg-thinq/releases/tag/v1.0.1
