@@ -146,16 +146,37 @@ async function initialize() {
     return;
   }
 
+  registry.configure(config);
+  // Armed BEFORE the first read of the account: when that read fails (the
+  // network is often not up yet right after a container start, or LG is
+  // down), the loop is what retries it. Armed after it, a failed start left
+  // the integration without any refresh until the next scan or config change.
+  startRefreshLoop();
+  await discoverAndPublish();
+}
+
+// Set when the last read of the account failed: the refresh loop retries it.
+let discoveryPending = false;
+let lastDiscoveryAttemptAt = 0;
+const DISCOVERY_RETRY_MS = 5 * 60 * 1000;
+
+/**
+ * Read the account, publish the appliances and their first values, and report
+ * the outcome in the Configuration screen. Never throws: a failure is retried
+ * by the refresh loop.
+ */
+async function discoverAndPublish() {
+  lastDiscoveryAttemptAt = Date.now();
   try {
-    registry.configure(config);
     const devices = await registry.discover(gladys, config);
     await gladys.publishDiscoveredDevices(devices);
+    discoveryPending = false;
     await registry.pollAll(gladys);
     await publishTransports();
-    startRefreshLoop();
     logger.info(`LG ThinQ ready: ${devices.length} appliance(s)`);
     await setStatus(true);
   } catch (err) {
+    discoveryPending = true;
     logger.error('LG ThinQ initialization failed', err);
     await setStatus(false, describeFailure(err));
   }
@@ -197,6 +218,13 @@ async function refreshDueAppliances() {
   }
   refreshing = true;
   try {
+    if (discoveryPending) {
+      if (Date.now() - lastDiscoveryAttemptAt >= DISCOVERY_RETRY_MS) {
+        logger.info('Retrying the read of the LG ThinQ account');
+        await discoverAndPublish();
+      }
+      return;
+    }
     if ((await registry.pollDue(gladys)) > 0) {
       await publishTransports();
     }

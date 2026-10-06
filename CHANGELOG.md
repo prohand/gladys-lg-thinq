@@ -17,6 +17,11 @@ All notable changes to this integration are documented here. The format follows
 - Development dependencies updated to their latest versions (ESLint 10.12, Prettier 3.9.9, globals 17.13).
 - Manifest re-formatted with Prettier, so the CI format check passes again.
 
+### Fixed
+
+- A failed first read of the LG account (network not up yet after a container start, LG unavailable) no longer stops every refresh until the next scan or configuration change: the refresh loop is armed first and retries the read every 5 minutes.
+- The Release workflow re-runs Prettier on the manifest after `jq`, so a release no longer leaves `main` with a failing CI format check.
+
 ## [2.0.1] - 2026-09-22
 
 ### Fixed

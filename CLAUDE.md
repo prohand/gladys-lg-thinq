@@ -64,6 +64,9 @@ src/widgets.js           dashboard widgets
 - **Device external ids are short** (shortened in 2.0.1 so the appliance widget accepts them):
   never change their shape, it orphans users' devices.
 - **Transport badge**: `cloud` when LG answers, `unreachable` with the reason otherwise.
+- **The loop is armed before the first read of the account** (`initialize()`): when that read
+  fails (network not up yet after a container start, LG down), the loop retries it every 5 min
+  (`discoverAndPublish`) instead of leaving the integration without any refresh.
 - **Errors are user problems, not crashes**: `describeFailure()` turns auth and quota errors into
   actionable bilingual messages in the Configuration screen.
 - The token is a secret: never log it.
