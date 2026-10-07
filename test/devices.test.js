@@ -174,6 +174,29 @@ test('the refresh loop survives one appliance failing', async () => {
   assert.ok([...registry.models.values()].every((model) => model.lastPollAt > 0));
 });
 
+test('the refresh loop remembers an account-wide error until a read works again', async () => {
+  const { registry, api, gladys } = buildRegistry({
+    stateError: new ThinqApiError(THINQ_ERROR_CODES.INVALID_TOKEN, 'revoked', 401),
+  });
+  await registry.discover(gladys, config);
+  await registry.pollDue(gladys);
+  assert.equal(registry.accountError?.isAuthError, true);
+
+  // The token is fixed: the next good read clears it.
+  const failing = api.getDeviceState;
+  api.getDeviceState = async (deviceId) =>
+    failing
+      .call(api, deviceId)
+      .catch(
+        () => [AIR_CONDITIONER, REFRIGERATOR].find((f) => f.device.deviceId === deviceId).state,
+      );
+  for (const model of registry.models.values()) {
+    model.lastPollAt -= config.poll_frequency * 1000;
+  }
+  await registry.pollDue(gladys);
+  assert.equal(registry.accountError, null);
+});
+
 test('a failed read still counts as an attempt, no retry storm', async () => {
   const { registry, gladys } = buildRegistry({ stateError: new Error('network down') });
   await registry.discover(gladys, config);

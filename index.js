@@ -171,6 +171,7 @@ async function discoverAndPublish() {
     const devices = await registry.discover(gladys, config);
     await gladys.publishDiscoveredDevices(devices);
     discoveryPending = false;
+    reportedAccountError = null;
     await registry.pollAll(gladys);
     await publishTransports();
     logger.info(`LG ThinQ ready: ${devices.length} appliance(s)`);
@@ -227,6 +228,7 @@ async function refreshDueAppliances() {
     }
     if ((await registry.pollDue(gladys)) > 0) {
       await publishTransports();
+      await reportAccountHealth();
     }
   } catch (err) {
     logger.error('Refresh cycle failed', err);
@@ -244,6 +246,23 @@ async function publishTransports() {
   if (entries.length > 0) {
     await gladys.publishTransports(entries);
   }
+}
+
+// The account problem last shown in the Configuration screen by the refresh
+// loop. The status used to be written by discoverAndPublish() alone: a token
+// revoked or expired after a good start stayed behind a green status, with
+// every appliance read failing in the logs.
+let reportedAccountError = null;
+
+/** Show (or clear) an account-wide problem met by the refresh loop. */
+async function reportAccountHealth() {
+  const err = registry.accountError;
+  const key = err ? `${err.isAuthError}:${err.isRateLimited}` : null;
+  if (key === reportedAccountError) {
+    return;
+  }
+  reportedAccountError = key;
+  await setStatus(!err, err ? describeFailure(err) : undefined);
 }
 
 /** Turn an initialization failure into something the user can act on. */
