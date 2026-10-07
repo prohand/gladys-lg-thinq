@@ -93,6 +93,13 @@ export class DeviceRegistry {
      * next read look like a first one (no transition would be reported).
      */
     this.observations = new Map();
+    /**
+     * The account-wide problem met by the last refresh (credentials refused,
+     * quota exceeded), or null. An appliance that is simply offline is not
+     * one: its transport badge already says so.
+     * @type {ThinqApiError|null}
+     */
+    this.accountError = null;
     this.api = null;
     this.clientId = null;
     /** Refresh interval asked for by the user, in milliseconds. */
@@ -324,8 +331,12 @@ export class DeviceRegistry {
       read += 1;
       try {
         await this.pollModel(gladys, model);
+        this.accountError = null;
       } catch (err) {
         logger.error(`Refresh of ${model.name} failed`, err);
+        if (err instanceof ThinqApiError && (err.isAuthError || err.isRateLimited)) {
+          this.accountError = err;
+        }
       }
       await sleep(REQUEST_SPACING_MS);
     }
