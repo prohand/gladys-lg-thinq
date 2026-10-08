@@ -6,6 +6,8 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-10-08
+
 ### Fixed
 
 - The widget **Refresh** buttons and the "Read the state" scene action read an appliance at most once every 2 minutes, and otherwise answer from its last read: repeated clicks, or a scene run every few seconds, no longer drain the LG call quota.
@@ -83,7 +85,8 @@ First public release.
 - Read an appliance the moment the user adds it
 - Actually schedule the refresh of the appliances
 
-[Unreleased]: https://github.com/prohand/gladys-lg-thinq/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/prohand/gladys-lg-thinq/compare/v2.2.1...HEAD
+[2.2.1]: https://github.com/prohand/gladys-lg-thinq/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/prohand/gladys-lg-thinq/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/prohand/gladys-lg-thinq/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/prohand/gladys-lg-thinq/compare/v2.0.0...v2.0.1
