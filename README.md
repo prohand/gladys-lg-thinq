@@ -106,6 +106,11 @@ Declared in the manifest, served by the SDK handlers — no core change:
   scene) and `refresh_appliance` (read now, output `online`, `run_state`,
   `remaining_minutes`).
 
+The widget Refresh buttons and `refresh_appliance` never read an appliance more
+than once every two minutes (`FORCED_READ_MIN_INTERVAL_MS`): inside that gap
+they answer from the last read, so a button clicked repeatedly or a scene run
+every few seconds cannot drain the LG quota.
+
 The reads caused by an action (scene action, widget button, command) are
 **silent**: they publish the states but leave the observations untouched, so
 no scene event is ever fired as the consequence of an action — the next
@@ -118,6 +123,7 @@ regular read reports the transition instead.
 ├─ index.js                          # SDK bootstrap + event wiring (no LG logic)
 ├─ src/
 │  ├─ config.js                      # config defaults + normalization
+│  ├─ runtime.js                     # lifecycle: init, refresh loop, status
 │  ├─ pollFrequency.js               # the cadences Gladys accepts (ms enum)
 │  ├─ actions.js                     # the four Configuration-screen buttons
 │  ├─ sceneTriggers.js               # read -> read transitions -> scene events

@@ -6,9 +6,32 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The widget **Refresh** buttons and the "Read the state" scene action read an appliance at most once every 2 minutes, and otherwise answer from its last read: repeated clicks, or a scene run every few seconds, no longer drain the LG call quota.
+- The refresh loop pauses while Gladys is unreachable, instead of spending LG calls on states nobody can receive; it resumes when Gladys is back.
+- A reconnection or a configuration save no longer reads the profile of every appliance again: profiles are cached and only re-read on an explicit scan ("Refresh the appliance list", Discovery scan) or for a new appliance.
+- A bare HTTP 429 is recognized as an exceeded quota, and a bare HTTP 401/403 as refused credentials, even when LG (or a gateway in front of it) sends no ThinQ error body.
+- A refused token or an exceeded quota stops the round of reads at once, instead of trying (and counting) every remaining appliance.
+- A country LG does not serve is shown in the Configuration screen instead of crashing the initialization with an unhandled rejection.
+- Features added to an appliance from the Discovery tab ("Update") get their values right away instead of waiting for the next refresh.
+
+### Changed
+
+- Node.js 22 or later is required (`engines`); CI tests Node 22 and 24, and builds the Docker image on pull requests.
+- The Docker image installs strictly from the lockfile and drops the npm cache.
+- Dependabot also proposes Docker base image updates.
+
 ## [2.2.0] - 2026-10-07
 
-- Maintenance release, no functional change.
+### Fixed
+
+- A token revoked or expired after a good start, or a quota exceeded later, is now shown in the Configuration screen (it used to stay green while every read failed), and cleared at the next read that works.
+
+### Changed
+
+- CI runs the store admission checks on pull requests; Dependabot proposes npm and GitHub Actions updates.
+- GitHub Actions updated (checkout, setup-node, Docker actions), and a GitHub Release is published for every version.
 
 ## [2.1.0] - 2026-10-06
 
