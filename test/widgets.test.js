@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateWidgetContent, WIDGET_COLORS } from '@gladysassistant/integration-sdk';
-import { DeviceRegistry } from '../src/devices/index.js';
+import { DeviceRegistry, FORCED_READ_MIN_INTERVAL_MS } from '../src/devices/index.js';
 import { normalizeConfig } from '../src/config.js';
 import { WIDGETS, WIDGET_KEYS } from '../src/widgets.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
@@ -155,12 +155,37 @@ test('the refresh buttons read LG now, silently', async () => {
   assert.equal(message.fr, 'Appareil actualisé');
   assert.deepEqual(api.stateReads, [salon.deviceId]);
 
+  // The Salon was read a moment ago: only the two others cost a call.
   await overviewWidget.action(gladys, { registry, actionKey: 'refresh', settings: {} });
-  assert.equal(api.stateReads.length, 4);
+  assert.equal(api.stateReads.length, 3);
   assert.deepEqual(gladys.sceneEvents, []);
 
   await assert.rejects(
     applianceWidget.action(gladys, { registry, actionKey: 'nope', settings: {} }),
     /Unknown widget action/,
   );
+});
+
+test('a Refresh clicked again within two minutes serves the last read, no LG call', async () => {
+  const { api, gladys, registry, byName } = await setup();
+  const salon = byName('Salon');
+  const refresh = () =>
+    applianceWidget.action(gladys, {
+      registry,
+      actionKey: 'refresh',
+      settings: { device: salon.externalId },
+    });
+
+  await refresh();
+  await refresh();
+  await overviewWidget.action(gladys, { registry, actionKey: 'refresh', settings: {} });
+  await overviewWidget.action(gladys, { registry, actionKey: 'refresh', settings: {} });
+  // One read per appliance, however many clicks.
+  assert.equal(api.stateReads.length, 3);
+  assert.equal(api.stateReads.filter((id) => id === salon.deviceId).length, 1);
+
+  // Past the minimum gap, a click reads LG again.
+  salon.lastPollAt -= FORCED_READ_MIN_INTERVAL_MS;
+  await refresh();
+  assert.equal(api.stateReads.filter((id) => id === salon.deviceId).length, 2);
 });

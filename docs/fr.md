@@ -116,7 +116,9 @@ intégrations :
   **Actualiser**.
 
 Les valeurs suivent l'intervalle de rafraîchissement ; **Actualiser** interroge
-LG tout de suite. Seuls les appareils ajoutés dans Gladys sont affichés.
+LG tout de suite, sauf pour un appareil déjà lu dans les 2 dernières minutes :
+c'est alors sa dernière lecture qui est affichée (chaque appel LG compte dans
+votre quota). Seuls les appareils ajoutés dans Gladys sont affichés.
 
 ## Scènes
 
@@ -159,6 +161,9 @@ Bon à savoir :
 
 Exemple : chaque soir à 22 h, « Lire l'état » du lave-linge → condition
 « état = `END` » → notification « Pensez à vider le lave-linge ».
+
+« Lire l'état » interroge LG au plus une fois toutes les 2 minutes par appareil :
+dans cet intervalle, la scène reçoit la dernière lecture.
 
 ## Dépannage
 

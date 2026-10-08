@@ -4,9 +4,10 @@
 //   send_command        set any ThinQ property from a scene: the same escape
 //                       hatch as the Configuration button, for the modes
 //                       Gladys has no feature for (a job mode, a course)
-//   refresh_appliance   read an appliance NOW, and hand the scene what it
-//                       says (connected, run state, remaining time), so the
-//                       next actions can use it or gate on it
+//   refresh_appliance   read an appliance NOW (or serve the read of the last
+//                       two minutes), and hand the scene what it says
+//                       (connected, run state, remaining time), so the next
+//                       actions can use it or gate on it
 //
 // The core resolves the fields (scene variables substituted, validated) before
 // the handler runs; throwing fails this action only, the scene goes on.
@@ -75,10 +76,15 @@ export const SCENE_ACTIONS = {
     return undefined;
   },
 
-  /** Read one appliance now and expose what it reports to the scene. */
+  /**
+   * Read one appliance now and expose what it reports to the scene. A scene
+   * run every few seconds must not drain the LG quota: inside
+   * `FORCED_READ_MIN_INTERVAL_MS` of the last read, the last known state is
+   * what the scene gets.
+   */
   async refresh_appliance(gladys, { registry, fields }) {
     const model = registry.requireModel(fields.device);
-    await registry.pollModel(gladys, model, { silent: true });
+    await registry.forceRead(gladys, model);
     const runState = firstValue(model, isRunStateBinding);
     return {
       online: model.online !== false,

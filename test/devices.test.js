@@ -425,3 +425,141 @@ test('send_command refuses a value the appliance does not accept', async () => {
     /has no property "nope"/,
   );
 });
+
+/** Count the profile reads of a fake API. */
+function countProfileReads(api) {
+  const reads = [];
+  const getDeviceProfile = api.getDeviceProfile.bind(api);
+  api.getDeviceProfile = async (deviceId) => {
+    reads.push(deviceId);
+    return getDeviceProfile(deviceId);
+  };
+  return reads;
+}
+
+test('a re-discovery reuses the profiles, an explicit scan reads them again', async () => {
+  const { registry, api, gladys } = buildRegistry();
+  const profileReads = countProfileReads(api);
+
+  await registry.discover(gladys, config);
+  assert.equal(profileReads.length, 2);
+
+  // A reconnection or a configuration save: only the device list is read.
+  const devices = await registry.discover(gladys, config);
+  assert.equal(profileReads.length, 2);
+  assert.equal(devices.length, 2);
+
+  await registry.discover(gladys, config, { refreshProfiles: true });
+  assert.equal(profileReads.length, 4);
+});
+
+test('an appliance new to the account gets its profile read, the others do not', async () => {
+  const fixtures = [AIR_CONDITIONER];
+  const { registry, api, gladys } = buildRegistry({ fixtures });
+  const profileReads = countProfileReads(api);
+  await registry.discover(gladys, config);
+
+  fixtures.push(REFRIGERATOR);
+  await registry.discover(gladys, config);
+  assert.deepEqual(profileReads, [AIR_CONDITIONER.device.deviceId, REFRIGERATOR.device.deviceId]);
+  assert.equal(registry.models.size, 2);
+});
+
+test('a profile that could not be read is retried on the next discovery', async () => {
+  const { registry, api, gladys } = buildRegistry();
+  const getDeviceProfile = api.getDeviceProfile.bind(api);
+  let fail = true;
+  api.getDeviceProfile = async (deviceId) => {
+    if (fail && deviceId === REFRIGERATOR.device.deviceId) {
+      throw new Error('timeout');
+    }
+    return getDeviceProfile(deviceId);
+  };
+  await registry.discover(gladys, config);
+  assert.equal(registry.models.size, 1);
+
+  fail = false;
+  await registry.discover(gladys, config);
+  assert.equal(registry.models.size, 2);
+});
+
+test('the refresh loop stops at the first quota or credential refusal', async () => {
+  for (const stateError of [
+    new ThinqApiError(THINQ_ERROR_CODES.EXCEEDED_API_CALLS, 'slow down', 429),
+    new ThinqApiError('401', 'Unauthorized', 401),
+  ]) {
+    const { registry, api, gladys } = buildRegistry({ stateError });
+    await registry.discover(gladys, config);
+
+    assert.equal(await registry.pollDue(gladys), 1);
+    // The second appliance would have been refused too, and counted.
+    assert.equal(api.stateReads.length, 1);
+    assert.equal(registry.accountError, stateError);
+    // It stays due: the next tick that gets through reads it.
+    const second = [...registry.models.values()][1];
+    assert.equal(registry.dueForPoll(second), true);
+  }
+});
+
+test('a round of reads is abandoned as soon as Gladys is gone', async () => {
+  const { registry, api, gladys } = buildRegistry();
+  await registry.discover(gladys, config);
+  let connected = true;
+  const getDeviceState = api.getDeviceState.bind(api);
+  api.getDeviceState = async (deviceId) => {
+    connected = false;
+    return getDeviceState(deviceId);
+  };
+
+  assert.equal(await registry.pollDue(gladys, { shouldStop: () => !connected }), 1);
+  assert.equal(api.stateReads.length, 1);
+});
+
+test('an appliance updated from Discovery gets its last values again, without an LG call', async () => {
+  const { registry, api, gladys } = buildRegistry();
+  await registry.discover(gladys, config);
+  const model = [...registry.models.values()].find((m) => m.name === 'Salon');
+  await registry.pollModel(gladys, model);
+  const published = gladys.published.length;
+
+  assert.equal(await registry.republishDevice(gladys, model.device), true);
+  assert.equal(api.stateReads.length, 1);
+  assert.equal(gladys.published.length, published * 2);
+});
+
+test('an appliance updated before any read is read now', async () => {
+  const { registry, api, gladys } = buildRegistry();
+  await registry.discover(gladys, config);
+  const model = [...registry.models.values()].find((m) => m.name === 'Salon');
+
+  assert.equal(await registry.republishDevice(gladys, model.device), true);
+  assert.deepEqual(api.stateReads, [model.deviceId]);
+  assert.equal(await registry.republishDevice(gladys, { external_id: 'ext:zwave:1' }), false);
+});
+
+test('a country LG does not serve drops the previous API client', () => {
+  const registry = new DeviceRegistry();
+  registry.clientId = 'client-uuid';
+  registry.configure(config);
+  assert.ok(registry.api);
+  assert.throws(
+    () => registry.configure(normalizeConfig({ access_token: 'pat', country_code: 'ZZ' })),
+    /not supported/,
+  );
+  assert.equal(registry.api, null);
+});
+
+test('a re-discovery keeps what the last reads learnt, so nothing is read twice', async () => {
+  const { registry, api, gladys } = buildRegistry();
+  await registry.discover(gladys, config);
+  const model = [...registry.models.values()][0];
+  await registry.pollModel(gladys, model);
+
+  await registry.discover(gladys, config);
+  const rebuilt = registry.models.get(model.externalId);
+  assert.notEqual(rebuilt, model);
+  assert.equal(rebuilt.lastPollAt, model.lastPollAt);
+  assert.equal(rebuilt.lastState, model.lastState);
+  assert.equal(await registry.forceRead(gladys, rebuilt), false);
+  assert.equal(api.stateReads.length, 1);
+});

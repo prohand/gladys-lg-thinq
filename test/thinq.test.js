@@ -106,3 +106,42 @@ test('a network failure keeps its cause instead of masquerading as an API error'
   });
   await assert.rejects(() => api.getDevices(), /LG ThinQ request failed .*ECONNRESET/);
 });
+
+test('a bare HTTP refusal, with no ThinQ body, is still recognized', async () => {
+  const bare = (status) => async () => ({
+    ok: false,
+    status,
+    statusText: 'x',
+    json: async () => {
+      throw new SyntaxError('Unexpected token <');
+    },
+  });
+  const refusal = async (status) => {
+    try {
+      await buildApi(bare(status)).getDevices();
+    } catch (err) {
+      return err;
+    }
+    throw new Error('the request should have failed');
+  };
+
+  const throttled = await refusal(429);
+  assert.ok(throttled instanceof ThinqApiError);
+  assert.equal(throttled.isRateLimited, true);
+  assert.equal(throttled.isAuthError, false);
+
+  for (const status of [401, 403]) {
+    const refused = await refusal(status);
+    assert.equal(refused.isAuthError, true, `HTTP ${status}`);
+    assert.equal(refused.isRateLimited, false);
+  }
+
+  const broken = await refusal(500);
+  assert.equal(broken.isAuthError, false);
+  assert.equal(broken.isRateLimited, false);
+});
+
+test('a 403 naming an appliance problem is not a refused token', () => {
+  const err = new ThinqApiError(THINQ_ERROR_CODES.NO_CONTROL_AUTHORITY, 'no authority', 403);
+  assert.equal(err.isAuthError, false);
+});
