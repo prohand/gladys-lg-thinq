@@ -1,7 +1,8 @@
 // -----------------------------------------------------------------------------
 // Entry point of the LG ThinQ integration for Gladys Assistant.
 //
-// This file wires the SDK to the device registry (src/devices/) and holds no
+// This file wires the SDK to the device registry (src/devices/) and to the
+// runtime (src/runtime.js: configuration, refresh loop, status), and holds no
 // appliance logic:
 //   1. instantiates the SDK (connection, auth, reconnection: handled for you);
 //   2. registers the event handlers BEFORE connect();
@@ -15,13 +16,11 @@
 // -----------------------------------------------------------------------------
 
 import { GladysIntegration, logger } from '@gladysassistant/integration-sdk';
-import { isConfigured, normalizeConfig } from './src/config.js';
 import { DeviceRegistry } from './src/devices/index.js';
-import { SCHEDULER_POLL_FREQUENCY } from './src/pollFrequency.js';
+import { createRuntime } from './src/runtime.js';
 import { ACTIONS } from './src/actions.js';
 import { SCENE_ACTIONS } from './src/sceneActions.js';
 import { WIDGETS } from './src/widgets.js';
-import { ThinqApiError } from './src/thinq/errors.js';
 
 const gladys = new GladysIntegration();
 // When a read changes what an appliance displays (connection, run state,
@@ -35,19 +34,17 @@ const registry = new DeviceRegistry({
   },
 });
 
-// Current configuration (hot-reloaded through onConfigUpdated).
-let config = normalizeConfig();
-
-// Timer of the integration's own refresh loop (see startRefreshLoop).
-let refreshTimer = null;
-let refreshing = false;
+// Configuration, initialization, refresh loop and status (src/runtime.js).
+const runtime = createRuntime(gladys, { registry });
 
 // --- Discovery: Gladys asks for the list of appliances -----------------------
 gladys.onScanRequest(async () => {
   logger.info('onScanRequest -> reading the LG ThinQ account');
-  const devices = await registry.discover(gladys, config);
+  // An explicit scan: the profiles are read again too (a firmware update can
+  // change what an appliance reports). Reconnections reuse the cached ones.
+  const devices = await registry.discover(gladys, runtime.config, { refreshProfiles: true });
   await gladys.publishDiscoveredDevices(devices);
-  await publishTransports();
+  await runtime.publishTransports();
 });
 
 // --- Command: the user acts on a controllable feature ------------------------
@@ -66,11 +63,13 @@ gladys.onPoll(async (device) => {
     return;
   }
   if (!registry.dueForPoll(model)) {
-    logger.debug(`onPoll skipped, ${model.name} was read less than ${config.poll_frequency}s ago`);
+    logger.debug(
+      `onPoll skipped, ${model.name} was read less than ${runtime.config.poll_frequency}s ago`,
+    );
     return;
   }
   await registry.pollModel(gladys, model);
-  await publishTransports();
+  await runtime.publishTransports();
 });
 
 // --- The user adds a discovered appliance ------------------------------------
@@ -81,13 +80,24 @@ gladys.onPoll(async (device) => {
 gladys.onDeviceCreated(async (device) => {
   logger.info(`onDeviceCreated -> ${device.external_id}`);
   if (await registry.pollNewDevice(gladys, device)) {
-    await publishTransports();
+    await runtime.publishTransports();
+  }
+});
+
+// --- The user updates an appliance -------------------------------------------
+// "Update" in the Discovery tab can add features; Gladys dropped every state
+// sent to them before they existed. The last read is published again (no LG
+// call), or the appliance is read when there is none.
+gladys.onDeviceUpdated(async (device) => {
+  logger.info(`onDeviceUpdated -> ${device.external_id}`);
+  if (await registry.republishDevice(gladys, device)) {
+    await runtime.publishTransports();
   }
 });
 
 // --- Manifest actions: buttons in the Configuration screen -------------------
 for (const [key, handler] of Object.entries(ACTIONS)) {
-  gladys.onAction(key, (fields) => handler(gladys, { registry, config, fields }));
+  gladys.onAction(key, (fields) => handler(gladys, { registry, config: runtime.config, fields }));
 }
 
 // --- Scene actions: run by a scene of the user ------------------------------
@@ -95,17 +105,19 @@ for (const [key, handler] of Object.entries(ACTIONS)) {
 for (const [key, handler] of Object.entries(SCENE_ACTIONS)) {
   gladys.onSceneAction(key, async (fields) => {
     const outputs = await handler(gladys, { registry, fields });
-    await publishTransports();
+    await runtime.publishTransports();
     return outputs;
   });
 }
 
 // --- Dashboard widgets --------------------------------------------------------
 for (const [key, widget] of Object.entries(WIDGETS)) {
-  gladys.onWidgetGet(key, ({ settings }) => widget.get(gladys, { registry, config, settings }));
+  gladys.onWidgetGet(key, ({ settings }) =>
+    widget.get(gladys, { registry, config: runtime.config, settings }),
+  );
   gladys.onWidgetAction(key, async (actionKey, params, { settings }) => {
     const message = await widget.action(gladys, { registry, actionKey, params, settings });
-    await publishTransports();
+    await runtime.publishTransports();
     return message;
   });
 }
@@ -113,186 +125,30 @@ for (const [key, widget] of Object.entries(WIDGETS)) {
 // --- Configuration updated by the user ---------------------------------------
 gladys.onConfigUpdated(async (newConfig) => {
   logger.info('onConfigUpdated -> new configuration received');
-  config = normalizeConfig(newConfig);
-  await initialize();
+  runtime.setConfig(newConfig);
+  await runtime.initialize();
 });
 
 // --- Connection lifecycle ----------------------------------------------------
 // The SDK logs the WebSocket lifecycle itself (under the `gladys-sdk` name):
-// these handlers only run the integration's own (re)initialization.
-gladys.on('connected', async () => {
-  try {
-    config = normalizeConfig(await gladys.getConfig());
-  } catch (err) {
-    logger.error('Could not read the integration configuration', err);
-    return;
-  }
-  await initialize();
-});
-
-/**
- * (Re)build everything that depends on the configuration: the API client, the
- * appliance list, the first read. Reports the outcome in the Configuration
- * screen instead of crashing — a wrong token is a user problem, not a bug.
- */
-async function initialize() {
-  if (!isConfigured(config)) {
-    logger.warn('Waiting for the Personal Access Token and the country');
-    stopRefreshLoop();
-    await setStatus(false, {
-      en: 'Enter your LG ThinQ Personal Access Token and your country to get started.',
-      fr: "Renseignez votre jeton d'accès personnel LG ThinQ et votre pays pour commencer.",
-    });
-    return;
-  }
-
-  registry.configure(config);
-  // Armed BEFORE the first read of the account: when that read fails (the
-  // network is often not up yet right after a container start, or LG is
-  // down), the loop is what retries it. Armed after it, a failed start left
-  // the integration without any refresh until the next scan or config change.
-  startRefreshLoop();
-  await discoverAndPublish();
-}
-
-// Set when the last read of the account failed: the refresh loop retries it.
-let discoveryPending = false;
-let lastDiscoveryAttemptAt = 0;
-const DISCOVERY_RETRY_MS = 5 * 60 * 1000;
-
-/**
- * Read the account, publish the appliances and their first values, and report
- * the outcome in the Configuration screen. Never throws: a failure is retried
- * by the refresh loop.
- */
-async function discoverAndPublish() {
-  lastDiscoveryAttemptAt = Date.now();
-  try {
-    const devices = await registry.discover(gladys, config);
-    await gladys.publishDiscoveredDevices(devices);
-    discoveryPending = false;
-    reportedAccountError = null;
-    await registry.pollAll(gladys);
-    await publishTransports();
-    logger.info(`LG ThinQ ready: ${devices.length} appliance(s)`);
-    await setStatus(true);
-  } catch (err) {
-    discoveryPending = true;
-    logger.error('LG ThinQ initialization failed', err);
-    await setStatus(false, describeFailure(err));
-  }
-}
-
-/**
- * Start the integration's own refresh loop.
- *
- * The Gladys scheduler is not enough on its own: it only polls the appliances
- * that were created with `should_poll`, so an appliance added before that flag
- * was published keeps its features frozen forever. This loop reads whatever is
- * due on its own, and shares `dueForPoll` with `onPoll`, so an appliance Gladys
- * does poll is still read once per refresh interval and the LG quota is
- * unchanged. Ticking at the Gladys cadence keeps a single notion of "a tick".
- */
-function startRefreshLoop() {
-  if (refreshTimer) {
-    return;
-  }
-  refreshTimer = setInterval(refreshDueAppliances, SCHEDULER_POLL_FREQUENCY);
-  // The WebSocket keeps the process alive; this timer must not, so a shutdown
-  // is never held back by a pending tick.
-  refreshTimer.unref?.();
-}
-
-/** Stop the refresh loop: nothing to read while the credentials are missing. */
-function stopRefreshLoop() {
-  if (refreshTimer) {
-    clearInterval(refreshTimer);
-    refreshTimer = null;
-  }
-}
-
-/** One tick of the refresh loop. Overlapping ticks are dropped, not queued. */
-async function refreshDueAppliances() {
-  if (refreshing) {
-    logger.debug('refresh skipped, the previous one is still running');
-    return;
-  }
-  refreshing = true;
-  try {
-    if (discoveryPending) {
-      if (Date.now() - lastDiscoveryAttemptAt >= DISCOVERY_RETRY_MS) {
-        logger.info('Retrying the read of the LG ThinQ account');
-        await discoverAndPublish();
-      }
-      return;
-    }
-    if ((await registry.pollDue(gladys)) > 0) {
-      await publishTransports();
-      await reportAccountHealth();
-    }
-  } catch (err) {
-    logger.error('Refresh cycle failed', err);
-  } finally {
-    refreshing = false;
-  }
-}
-
-/**
- * Publish the per-appliance reachability badge. Skipped when the account holds
- * nothing yet: an empty batch has nothing to say.
- */
-async function publishTransports() {
-  const entries = registry.transportEntries();
-  if (entries.length > 0) {
-    await gladys.publishTransports(entries);
-  }
-}
-
-// The account problem last shown in the Configuration screen by the refresh
-// loop. The status used to be written by discoverAndPublish() alone: a token
-// revoked or expired after a good start stayed behind a green status, with
-// every appliance read failing in the logs.
-let reportedAccountError = null;
-
-/** Show (or clear) an account-wide problem met by the refresh loop. */
-async function reportAccountHealth() {
-  const err = registry.accountError;
-  const key = err ? `${err.isAuthError}:${err.isRateLimited}` : null;
-  if (key === reportedAccountError) {
-    return;
-  }
-  reportedAccountError = key;
-  await setStatus(!err, err ? describeFailure(err) : undefined);
-}
-
-/** Turn an initialization failure into something the user can act on. */
-function describeFailure(err) {
-  if (err instanceof ThinqApiError && err.isAuthError) {
-    return {
-      en: 'LG refused the credentials: check the Personal Access Token and the country.',
-      fr: "LG a refusé les identifiants : vérifiez le jeton d'accès personnel et le pays.",
-    };
-  }
-  if (err instanceof ThinqApiError && err.isRateLimited) {
-    return {
-      en: 'LG ThinQ call quota exceeded, increase the refresh interval.',
-      fr: "Quota d'appels LG ThinQ dépassé, augmentez l'intervalle de rafraîchissement.",
-    };
-  }
-  return {
-    en: 'Could not reach LG ThinQ, check the integration logs.',
-    fr: "Impossible de joindre LG ThinQ, consultez les logs de l'intégration.",
-  };
-}
-
-async function setStatus(connected, message) {
-  await gladys.setConnectionStatus(connected, message).catch(() => {});
-}
+// these handlers only run the integration's own (re)initialization, and pause
+// the refresh loop while Gladys is away.
+gladys.on('connected', () => runtime.onConnected());
+gladys.on('disconnected', () => runtime.onDisconnected());
 
 // --- Graceful shutdown -------------------------------------------------------
 gladys.handleShutdown((signal) => {
   logger.info(`Received ${signal} -> graceful shutdown`);
-  stopRefreshLoop();
+  runtime.stopRefreshLoop();
+});
+
+// --- Safety net --------------------------------------------------------------
+// Every handler above reports its own failures, but a rejection that slips
+// through one (an SDK call made from a timer, a future handler) would make
+// Node 15+ kill the process: one lost promise must not stop the refreshes of
+// every appliance. It is logged, loudly, so the bug still gets fixed.
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled promise rejection', reason);
 });
 
 // --- Startup -----------------------------------------------------------------
