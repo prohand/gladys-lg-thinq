@@ -12,7 +12,7 @@
 // -----------------------------------------------------------------------------
 
 import { WIDGET_COLORS } from '@gladysassistant/integration-sdk';
-import { createdExternalIds } from './devices/index.js';
+import { createdExternalIds, FORCED_READ_MIN_INTERVAL_MS } from './devices/index.js';
 import { readStateValue } from './devices/profile.js';
 import { isRunStateBinding, runStateColor, translateValue } from './devices/runState.js';
 
@@ -265,24 +265,31 @@ export function buildOverviewContent(gladys, { registry, config }) {
 export const WIDGETS = {
   [WIDGET_KEYS.APPLIANCE]: {
     get: buildApplianceContent,
-    /** The Refresh button: read the appliance now. */
+    /**
+     * The Refresh button: read the appliance now, unless it was read in the
+     * last two minutes (`FORCED_READ_MIN_INTERVAL_MS`): every click is an LG
+     * call, and the quota is the account's.
+     */
     async action(gladys, { registry, actionKey, settings }) {
       if (actionKey !== 'refresh') {
         throw new Error(`Unknown widget action: ${actionKey}`);
       }
       const model = registry.requireModel(settings?.device);
-      await registry.pollModel(gladys, model, { silent: true });
+      await registry.forceRead(gladys, model);
       return TEXTS.refreshed;
     },
   },
   [WIDGET_KEYS.OVERVIEW]: {
     get: buildOverviewContent,
-    /** The Refresh button: read every added appliance now. */
+    /**
+     * The Refresh button: read every added appliance now — one LG call each,
+     * so the ones read in the last two minutes are skipped.
+     */
     async action(gladys, { registry, actionKey }) {
       if (actionKey !== 'refresh') {
         throw new Error(`Unknown widget action: ${actionKey}`);
       }
-      await registry.pollAll(gladys, { silent: true });
+      await registry.pollAll(gladys, { silent: true, minAgeMs: FORCED_READ_MIN_INTERVAL_MS });
       return TEXTS.allRefreshed;
     },
   },

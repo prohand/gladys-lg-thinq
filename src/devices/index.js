@@ -28,6 +28,20 @@ const logger = createLogger({ name: 'devices' });
 /** Pause between two ThinQ calls: the API throttles bursts per client. */
 const REQUEST_SPACING_MS = 150;
 
+/**
+ * Shortest gap between a read asked for by an action (a widget Refresh button,
+ * the "read the state" scene action) and the previous read of the same
+ * appliance. LG meters every call: a button clicked repeatedly, or a scene run
+ * every few seconds, would otherwise spend the quota of the whole account.
+ * Inside that gap the last known state is served instead.
+ */
+export const FORCED_READ_MIN_INTERVAL_MS = 120 * 1000;
+
+/** Is this ThinQ error about the whole account (credentials, quota)? */
+function isAccountError(err) {
+  return err instanceof ThinqApiError && (err.isAuthError || err.isRateLimited);
+}
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -100,6 +114,15 @@ export class DeviceRegistry {
      * @type {ThinqApiError|null}
      */
     this.accountError = null;
+    /**
+     * ThinQ deviceId -> profile. A profile describes the MODEL (its properties
+     * and their ranges), it does not move with the appliance's life: re-reading
+     * it on every reconnection or configuration save doubled the calls of a
+     * discovery for nothing. It is read again only on an explicit scan, or for
+     * an appliance not seen yet.
+     * @type {Map<string, object>}
+     */
+    this.profiles = new Map();
     this.api = null;
     this.clientId = null;
     /** Refresh interval asked for by the user, in milliseconds. */
@@ -111,7 +134,7 @@ export class DeviceRegistry {
   /**
    * (Re)build the API client from the user configuration. Returns false when
    * the configuration is not usable yet (no token, no country): the caller
-   * reports it, nothing throws.
+   * reports it. Throws when the country is not one LG serves.
    */
   configure(config) {
     this.pollIntervalMs = config.poll_frequency * 1000;
@@ -120,6 +143,9 @@ export class DeviceRegistry {
       return false;
     }
     this.clientId ??= getOrCreateClientId();
+    // Cleared first: when the new configuration is refused (a country LG does
+    // not serve), the client of the PREVIOUS one must not keep answering.
+    this.api = null;
     this.api = this.createApi({
       accessToken: config.access_token,
       countryCode: config.country_code,
@@ -140,24 +166,43 @@ export class DeviceRegistry {
 
   /**
    * Fetch the appliances of the account and rebuild every device model.
+   *
+   * @param {object} gladys the SDK instance
+   * @param {object} config the normalized configuration
+   * @param {object} [options]
+   * @param {boolean} [options.refreshProfiles] re-read every profile instead of
+   *   reusing the cached ones (an explicit scan: the user may have updated an
+   *   appliance's firmware, or re-created the token with other scopes)
    * @returns {Promise<Array<object>>} the Gladys discovery payloads
    */
-  async discover(gladys, config) {
+  async discover(gladys, config, { refreshProfiles = false } = {}) {
     const api = this.requireApi();
     const thinqDevices = await api.getDevices();
     logger.info(`ThinQ account holds ${thinqDevices.length} appliance(s)`);
 
     const models = new Map();
+    const profiles = new Map();
     for (const thinqDevice of thinqDevices) {
       if (!thinqDevice?.deviceId) {
         continue;
       }
+      const cached = refreshProfiles ? undefined : this.profiles.get(thinqDevice.deviceId);
       try {
-        const profile = await api.getDeviceProfile(thinqDevice.deviceId);
+        const profile = cached ?? (await api.getDeviceProfile(thinqDevice.deviceId));
+        profiles.set(thinqDevice.deviceId, profile);
         const model = buildDeviceModel(gladys, { thinqDevice, profile, config });
         if (model.device.features.length === 0) {
           logger.warn(`${model.name}: no usable property in the ThinQ profile, skipped`);
           continue;
+        }
+        // What the last reads learnt survives the rebuild: without it, a scan
+        // made every appliance look never read, due at once for the loop and
+        // for the forced reads alike.
+        const previous = this.models.get(model.externalId);
+        if (previous) {
+          model.lastPollAt = previous.lastPollAt;
+          model.lastState = previous.lastState;
+          model.online = previous.online;
         }
         models.set(model.externalId, model);
       } catch (err) {
@@ -167,9 +212,14 @@ export class DeviceRegistry {
           err,
         );
       }
-      await sleep(REQUEST_SPACING_MS);
+      if (!cached) {
+        await sleep(REQUEST_SPACING_MS);
+      }
     }
 
+    // Only the appliances still on the account are kept: a profile read that
+    // failed is retried on the next discovery.
+    this.profiles = profiles;
     this.models = models;
     warnLegacyDevices(gladys, models);
     return this.discoveredDevices();
@@ -289,21 +339,55 @@ export class DeviceRegistry {
    * device the user never added has nowhere to land — it only spends an LG API
    * call. Those appliances get their first read the moment they are added
    * (`pollNewDevice`).
+   *
+   * `minAgeMs` skips the appliances read more recently than that (a forced
+   * read, see `FORCED_READ_MIN_INTERVAL_MS`). A refused token or an exceeded
+   * quota stops the round: every following call would be refused the same way,
+   * and each of them would still count against the quota.
    */
-  async pollAll(gladys, { silent = false } = {}) {
+  async pollAll(gladys, { silent = false, minAgeMs = 0, now = Date.now } = {}) {
     const created = createdExternalIds(gladys);
     for (const model of this.models.values()) {
       if (created && !created.has(model.externalId)) {
         logger.debug(`${model.name} is not added to Gladys yet, no initial read`);
         continue;
       }
+      if (minAgeMs > 0 && !this.dueForForcedRead(model, minAgeMs, now())) {
+        logger.debug(`${model.name} was read less than ${minAgeMs / 1000}s ago, not read again`);
+        continue;
+      }
       try {
         await this.pollModel(gladys, model, { silent });
       } catch (err) {
         logger.error(`Initial read of ${model.name} failed`, err);
+        if (isAccountError(err)) {
+          break;
+        }
       }
       await sleep(REQUEST_SPACING_MS);
     }
+  }
+
+  /** Has the appliance gone `minAgeMs` without a read? */
+  dueForForcedRead(model, minAgeMs = FORCED_READ_MIN_INTERVAL_MS, now = Date.now()) {
+    return !model.lastPollAt || now - model.lastPollAt >= minAgeMs;
+  }
+
+  /**
+   * Read an appliance because an action asked for it (widget button, scene
+   * action), unless it was read less than `FORCED_READ_MIN_INTERVAL_MS` ago:
+   * the model then keeps its last known state, which is what the caller
+   * reports. The read is silent (see `pollModel`).
+   *
+   * @returns {Promise<boolean>} true when LG was actually called
+   */
+  async forceRead(gladys, model, { now = Date.now } = {}) {
+    if (!this.dueForForcedRead(model, FORCED_READ_MIN_INTERVAL_MS, now())) {
+      logger.debug(`${model.name} was read moments ago, serving its last known state`);
+      return false;
+    }
+    await this.pollModel(gladys, model, { silent: true });
+    return true;
   }
 
   /**
@@ -316,12 +400,18 @@ export class DeviceRegistry {
    * `lastPollAt` with `onPoll` means an appliance Gladys does poll is still
    * read once per interval, never twice.
    *
+   * `shouldStop` is asked before each appliance: the round is abandoned as
+   * soon as Gladys is gone (nowhere to publish the states to).
+   *
    * @returns {Promise<number>} how many appliances were read
    */
-  async pollDue(gladys) {
+  async pollDue(gladys, { shouldStop = () => false } = {}) {
     const created = createdExternalIds(gladys);
     let read = 0;
     for (const model of this.models.values()) {
+      if (shouldStop()) {
+        break;
+      }
       if (created && !created.has(model.externalId)) {
         continue;
       }
@@ -334,8 +424,12 @@ export class DeviceRegistry {
         this.accountError = null;
       } catch (err) {
         logger.error(`Refresh of ${model.name} failed`, err);
-        if (err instanceof ThinqApiError && (err.isAuthError || err.isRateLimited)) {
+        if (isAccountError(err)) {
+          // The token or the quota is the account's, not this appliance's:
+          // the next appliances would be refused too, each call counted. They
+          // stay due, and are read on the next tick that gets through.
           this.accountError = err;
+          break;
         }
       }
       await sleep(REQUEST_SPACING_MS);
@@ -373,6 +467,32 @@ export class DeviceRegistry {
     });
     this.firstReads = read;
     await read;
+    return true;
+  }
+
+  /**
+   * The user updated an appliance in Gladys (typically "Update" in the
+   * Discovery tab, which can add features). Gladys dropped every state sent
+   * for a feature that did not exist yet, so the new features would stay empty
+   * until the next read. The last read is published again — no LG call — and
+   * an appliance never read (or offline at its last read) is read now.
+   *
+   * @returns {Promise<boolean>} false when the device is not one of ours
+   */
+  async republishDevice(gladys, device) {
+    const model = this.findModel(device);
+    if (!model) {
+      logger.debug(`Device updated outside the LG ThinQ registry: ${device?.external_id}`);
+      return false;
+    }
+    if (!model.lastState || model.online === false) {
+      return this.pollNewDevice(gladys, device);
+    }
+    const states = buildStates(model, model.lastState);
+    if (states.length > 0) {
+      await gladys.publishStates(states);
+    }
+    logger.debug(`${model.name}: ${states.length} state(s) published again after an update`);
     return true;
   }
 

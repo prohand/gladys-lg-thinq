@@ -105,8 +105,10 @@ In a dashboard, **Edit** → add a box → integrations category:
 - **LG appliances** — every LG appliance on one card, each with its state
   ("Running", "End", "Unreachable"…) and a **Refresh** button.
 
-Values follow the refresh interval; **Refresh** asks LG right away. Only the
-appliances added to Gladys are shown.
+Values follow the refresh interval; **Refresh** asks LG right away, except for
+an appliance already read in the last 2 minutes: its last read is shown instead
+(every LG call counts against your quota). Only the appliances added to Gladys
+are shown.
 
 ## Scenes
 
@@ -147,6 +149,9 @@ Good to know:
 
 Example: every evening at 10 pm, "Read the state" of the washer → condition
 "run state = `END`" → notification "Empty the washer".
+
+"Read the state" calls LG at most once every 2 minutes per appliance: within
+that gap, the scene gets the last read.
 
 ## Troubleshooting
 

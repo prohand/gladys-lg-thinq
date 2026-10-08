@@ -17,6 +17,7 @@
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
+import { FORCED_READ_MIN_INTERVAL_MS } from './devices/index.js';
 
 const logger = createLogger({ name: 'actions' });
 
@@ -60,9 +61,11 @@ export const ACTIONS = {
 
   /** Re-run discovery, e.g. after pairing a new appliance in the LG app. */
   async refresh_devices(gladys, { registry, config }) {
-    const devices = await registry.discover(gladys, config);
+    // An explicit request: the profiles are read again too (a firmware update
+    // can change what an appliance reports).
+    const devices = await registry.discover(gladys, config, { refreshProfiles: true });
     await gladys.publishDiscoveredDevices(devices);
-    await registry.pollAll(gladys, { silent: true });
+    await registry.pollAll(gladys, { silent: true, minAgeMs: FORCED_READ_MIN_INTERVAL_MS });
     return {
       en: `${devices.length} appliance(s) published to Gladys.`,
       fr: `${devices.length} appareil(s) publié(s) dans Gladys.`,

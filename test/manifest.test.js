@@ -199,7 +199,7 @@ test('the scene events carry exactly the declared fields and variables', () => {
 test('the scene action outputs are the declared ones', async () => {
   const declared = manifest.scene_actions.find((a) => a.key === 'refresh_appliance').outputs;
   const model = { online: false, bindings: new Map() };
-  const registry = { requireModel: () => model, pollModel: async () => {} };
+  const registry = { requireModel: () => model, forceRead: async () => true };
   const outputs = await SCENE_ACTIONS.refresh_appliance(null, { registry, fields: {} });
   assert.deepEqual(Object.keys(outputs).sort(), declared.map((o) => o.key).sort());
 });

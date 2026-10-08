@@ -6,6 +6,11 @@
 // The HTTP status alone is not enough to decide what to do (a 400 can mean
 // "bad token" or "the appliance is off"), so we keep the code and expose a few
 // helpers the integration reasons on.
+//
+// Not every refusal carries that body, though: a gateway or a proxy in front of
+// the API answers a bare 401/403/429 (an HTML page, or nothing). The client then
+// falls back on the HTTP status as the code, and those statuses are read for
+// what they unambiguously mean.
 // -----------------------------------------------------------------------------
 
 /** The error codes the integration actually branches on. */
@@ -43,6 +48,9 @@ const OFFLINE_ERROR_CODES = new Set([
   THINQ_ERROR_CODES.INVALID_STATUS_DEVICE,
 ]);
 
+/** HTTP status of a throttled request: "Too Many Requests". */
+const RATE_LIMITED_HTTP_STATUS = 429;
+
 export class ThinqApiError extends Error {
   /**
    * @param {string} code ThinQ error code (e.g. '1218')
@@ -58,7 +66,13 @@ export class ThinqApiError extends Error {
 
   /** Wrong token, wrong country, terms not accepted: the user must act. */
   get isAuthError() {
-    return AUTH_ERROR_CODES.has(this.code);
+    if (AUTH_ERROR_CODES.has(this.code)) {
+      return true;
+    }
+    // A 403 WITH a ThinQ code can be about one appliance (no control
+    // authority, not owned): only a bare 401/403 says the token itself is
+    // refused. A 401 is always about the credentials.
+    return this.status === 401 || (this.status === 403 && !this.hasThinqCode);
   }
 
   /** The appliance itself is unreachable — the integration is fine. */
@@ -68,6 +82,16 @@ export class ThinqApiError extends Error {
 
   /** Too many calls: back off instead of hammering the API. */
   get isRateLimited() {
-    return this.code === THINQ_ERROR_CODES.EXCEEDED_API_CALLS;
+    return (
+      this.code === THINQ_ERROR_CODES.EXCEEDED_API_CALLS || this.status === RATE_LIMITED_HTTP_STATUS
+    );
+  }
+
+  /**
+   * Did the API name the problem? Without a JSON error body the client uses the
+   * HTTP status as the code (see `ThinqApi.request`).
+   */
+  get hasThinqCode() {
+    return this.code !== undefined && this.code !== String(this.status);
   }
 }

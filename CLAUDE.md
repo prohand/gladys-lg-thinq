@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A Gladys Assistant **external integration** (Node 20+, ESM, no build step, one runtime
+A Gladys Assistant **external integration** (Node 22+, ESM, no build step, one runtime
 dependency: `@gladysassistant/integration-sdk`) that discovers, reads and controls the appliances
 of an **LG ThinQ** account through LG's official **ThinQ Connect Open API** (no reverse
 engineering, no password: a revocable Personal Access Token + the account country). Covers the
@@ -30,7 +30,8 @@ manifest with `jq`: run `npm run format` afterwards or CI fails.
 ## Architecture
 
 ```
-index.js                 SDK wiring, initialize(), the integration's own refresh loop
+index.js                 SDK wiring only (handlers registered before connect())
+src/runtime.js           config, initialize(), the integration's own refresh loop, status
 src/config.js            defaults (token, country, interval, temperature unit...) + normalization
 src/pollFrequency.js     the Gladys poll enum (ms) and the scheduler cadence (60 s)
 src/thinq/api.js         ThinQ Connect REST client (devices, profile, state, control)
@@ -59,6 +60,17 @@ src/widgets.js           dashboard widgets
   the whole discovery otherwise). An integration-owned loop (`refreshDueAppliances`) also ticks
   every minute because appliances created before `should_poll` was published are never polled by
   Gladys. Both share `dueForPoll`/`lastPollAt`, so the LG quota is unchanged.
+- **Forced reads are rate-limited too**: the widget Refresh buttons and the
+  `refresh_appliance` scene action read an appliance at most once every 2 min
+  (`FORCED_READ_MIN_INTERVAL_MS`, measured from any read) and otherwise answer
+  from the last one.
+- **Profiles are cached** per ThinQ `deviceId`: a reconnection or a config save
+  costs one `getDevices` call plus the states; profiles are re-read only on an
+  explicit scan (`onScanRequest`, `refresh_devices`) or for a new appliance.
+- **An auth or quota refusal stops the round** (`pollDue`, `pollAll`): the next
+  appliances would be refused too, each call counted.
+- **Gladys away = no LG reads**: `disconnected` stops the loop, `connected`
+  re-initializes (and re-arms it).
 - **Features come from the ThinQ profile** of each model (`profile.js` + `featureMap.js`); an
   appliance with no usable property is skipped. Every feature declares `min`/`max`.
 - **Device external ids are short** (shortened in 2.0.1 so the appliance widget accepts them):

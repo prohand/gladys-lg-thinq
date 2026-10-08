@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DeviceRegistry } from '../src/devices/index.js';
+import { DeviceRegistry, FORCED_READ_MIN_INTERVAL_MS } from '../src/devices/index.js';
 import { normalizeConfig } from '../src/config.js';
 import { SCENE_ACTIONS } from '../src/sceneActions.js';
 import { SCENE_TRIGGERS } from '../src/sceneTriggers.js';
@@ -238,4 +238,20 @@ test('a scene action on an appliance the integration does not know fails clearly
     SCENE_ACTIONS.refresh_appliance(gladys, { registry, fields: { device: 'ext:gone' } }),
     /unknown/i,
   );
+});
+
+test('refresh_appliance run again within two minutes answers from the last read', async () => {
+  const { api, gladys, registry, washtower } = await setup();
+  const run = () =>
+    SCENE_ACTIONS.refresh_appliance(gladys, { registry, fields: { device: washtower.externalId } });
+
+  assert.equal((await run()).run_state, 'RUNNING');
+  api.setState(WT, washtowerState('END'));
+  // A scene looping every few seconds: no LG call, the last known state.
+  assert.equal((await run()).run_state, 'RUNNING');
+  assert.equal(api.stateReads.length, 1);
+
+  washtower.lastPollAt -= FORCED_READ_MIN_INTERVAL_MS;
+  assert.equal((await run()).run_state, 'END');
+  assert.equal(api.stateReads.length, 2);
 });
