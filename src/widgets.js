@@ -1,7 +1,11 @@
 // -----------------------------------------------------------------------------
 // Dashboard widgets (manifest `widgets`).
 //
-//   appliance   one appliance: its live values, what it is doing, on/off
+//   appliance   one appliance: its live values, what it is doing, on/off,
+//               and "Send a command" (Gladys 5.2+): a form behind the button —
+//               one of the appliance's writable properties and a value — that
+//               runs the Configuration screen's `send_command`, the escape
+//               hatch for the modes Gladys has no feature for
 //   overview    every LG appliance of the house on one card, with its state
 //
 // The content is declarative (the core renders it, theme and dark mode
@@ -12,6 +16,7 @@
 // -----------------------------------------------------------------------------
 
 import { WIDGET_COLORS } from '@gladysassistant/integration-sdk';
+import { ACTIONS } from './actions.js';
 import { createdExternalIds, FORCED_READ_MIN_INTERVAL_MS } from './devices/index.js';
 import { readStateValue } from './devices/profile.js';
 import { isRunStateBinding, runStateColor, translateValue } from './devices/runState.js';
@@ -28,6 +33,19 @@ const MAX_STATUS_ITEMS = 10;
 const TILE_LABEL_LENGTH = 24;
 const STATUS_TEXT_LENGTH = 40;
 const HEADING_LENGTH = 40;
+const FIELD_OPTION_LABEL_LENGTH = 40;
+
+/** Keys of the widget buttons running an action (stored in the content only). */
+export const WIDGET_ACTIONS = {
+  REFRESH: 'refresh',
+  SEND_COMMAND: 'send_command',
+};
+
+/** Fields of the form behind "Send a command". */
+export const COMMAND_FIELDS = {
+  PROPERTY: 'property',
+  VALUE: 'value',
+};
 
 /** Bounds of `ttl_seconds`. */
 const MIN_TTL_SECONDS = 10;
@@ -42,6 +60,18 @@ const TEXTS = {
   off: { en: 'Off', fr: 'Arrêt' },
   refresh: { en: 'Refresh', fr: 'Actualiser' },
   refreshed: { en: 'Appliance refreshed', fr: 'Appareil actualisé' },
+  sendCommand: { en: 'Send a command', fr: 'Envoyer une commande' },
+  property: { en: 'Property', fr: 'Propriété' },
+  value: { en: 'Value', fr: 'Valeur' },
+  valuePlaceholder: { en: 'e.g. COOL, 22, true', fr: 'ex. COOL, 22, true' },
+  valueHelp: {
+    en: 'The values each property accepts are listed by "List the properties" in the Configuration screen.',
+    fr: "Les valeurs acceptées par chaque propriété sont listées par « Lister les propriétés » dans l'écran de configuration.",
+  },
+  needsForm: {
+    en: 'This button needs Gladys 5.2 or later. Use "Send a command" in the Configuration screen meanwhile.',
+    fr: "Ce bouton demande Gladys 5.2 ou plus. Utilisez « Envoyer une commande » dans l'écran de configuration d'ici là.",
+  },
   allRefreshed: { en: 'Appliances refreshed', fr: 'Appareils actualisés' },
   unknownAppliance: {
     en: 'This appliance is not known to the LG ThinQ integration: check its configuration, or pick another appliance in the widget settings.',
@@ -168,8 +198,70 @@ const refreshButton = {
   label: TEXTS.refresh,
   icon: 'refresh-cw',
   style: 'secondary',
-  action: { key: 'refresh' },
+  action: { key: WIDGET_ACTIONS.REFRESH },
 };
+
+/**
+ * The properties the "Send a command" form offers: the writable ones of the
+ * appliance's profile, the very list `send_command` accepts. A form carries
+ * static options (no `source`), so they are written when the content is
+ * built. Two properties with the same feature name (one per zone of a
+ * fridge…) are told apart by their ThinQ path.
+ */
+export function commandOptions(model) {
+  const writable = [...model.bindings]
+    .filter(([, binding]) => binding.descriptor.writable)
+    .map(([externalId, binding]) => ({
+      value: binding.descriptor.key,
+      name: featureName(model, externalId) || binding.descriptor.path,
+      path: binding.descriptor.path,
+    }));
+  const count = new Map();
+  for (const { name } of writable) {
+    count.set(name, (count.get(name) ?? 0) + 1);
+  }
+  return writable.map(({ value, name, path }) => {
+    const label = clip(count.get(name) > 1 ? path : name, FIELD_OPTION_LABEL_LENGTH);
+    return { value, label: { en: label, fr: label } };
+  });
+}
+
+/** "Send a command": a form behind the button, absent without a writable property. */
+function commandButton(model) {
+  const options = commandOptions(model);
+  if (options.length === 0) {
+    return [];
+  }
+  return [
+    {
+      type: 'button',
+      label: TEXTS.sendCommand,
+      icon: 'send',
+      style: 'secondary',
+      action: {
+        key: WIDGET_ACTIONS.SEND_COMMAND,
+        fields: [
+          {
+            key: COMMAND_FIELDS.PROPERTY,
+            type: 'select',
+            label: TEXTS.property,
+            required: true,
+            default: options[0].value,
+            options,
+          },
+          {
+            key: COMMAND_FIELDS.VALUE,
+            type: 'string',
+            label: TEXTS.value,
+            description: TEXTS.valueHelp,
+            placeholder: TEXTS.valuePlaceholder,
+            required: true,
+          },
+        ],
+      },
+    },
+  ];
+}
 
 /** Content of the `appliance` widget. */
 export function buildApplianceContent(gladys, { registry, config, settings }) {
@@ -188,8 +280,9 @@ export function buildApplianceContent(gladys, { registry, config, settings }) {
     type: 'status',
     items: [connectionItem(model), ...textItems(model)].slice(0, MAX_STATUS_ITEMS),
   };
-  const buttons = [...(created ? powerButtons(model) : []), refreshButton];
-  // The tiles take whatever the budget leaves: 3 next to on/off, up to 6.
+  const buttons = [...(created ? powerButtons(model) : []), refreshButton, ...commandButton(model)];
+  // The tiles take whatever the budget leaves: 2 next to on/off and the
+  // command form, up to 6.
   const room = Math.min(MAX_TILES, MAX_COMPONENTS - 2 - buttons.length);
   return {
     ttl_seconds: ttlSeconds(config),
@@ -270,8 +363,26 @@ export const WIDGETS = {
      * last two minutes (`FORCED_READ_MIN_INTERVAL_MS`): every click is an LG
      * call, and the quota is the account's.
      */
-    async action(gladys, { registry, actionKey, settings }) {
-      if (actionKey !== 'refresh') {
+    async action(gladys, { registry, actionKey, settings, values }) {
+      if (actionKey === WIDGET_ACTIONS.SEND_COMMAND) {
+        // A core older than 5.2 drops the form and runs the action without
+        // `values`: nothing to send, say why.
+        if (!values || typeof values !== 'object') {
+          return TEXTS.needsForm;
+        }
+        // The Configuration button's own path: the same property lookup, the
+        // same refusal of a read-only property or of a value the appliance
+        // does not accept, the same silent read afterwards.
+        return ACTIONS.send_command(gladys, {
+          registry,
+          fields: {
+            device: settings?.device,
+            property: values[COMMAND_FIELDS.PROPERTY],
+            value: values[COMMAND_FIELDS.VALUE],
+          },
+        });
+      }
+      if (actionKey !== WIDGET_ACTIONS.REFRESH) {
         throw new Error(`Unknown widget action: ${actionKey}`);
       }
       const model = registry.requireModel(settings?.device);
@@ -286,7 +397,7 @@ export const WIDGETS = {
      * so the ones read in the last two minutes are skipped.
      */
     async action(gladys, { registry, actionKey }) {
-      if (actionKey !== 'refresh') {
+      if (actionKey !== WIDGET_ACTIONS.REFRESH) {
         throw new Error(`Unknown widget action: ${actionKey}`);
       }
       await registry.pollAll(gladys, { silent: true, minAgeMs: FORCED_READ_MIN_INTERVAL_MS });

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { validateWidgetContent, WIDGET_COLORS } from '@gladysassistant/integration-sdk';
 import { DeviceRegistry, FORCED_READ_MIN_INTERVAL_MS } from '../src/devices/index.js';
 import { normalizeConfig } from '../src/config.js';
-import { WIDGETS, WIDGET_KEYS } from '../src/widgets.js';
+import { COMMAND_FIELDS, WIDGETS, WIDGET_ACTIONS, WIDGET_KEYS } from '../src/widgets.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 import { createLiveApi } from './helpers/liveApi.js';
 import { AIR_CONDITIONER, REFRIGERATOR, WASHTOWER } from './helpers/fixtures.js';
@@ -53,7 +53,7 @@ test('the appliance widget shows live tiles, the state and on/off', async () => 
   const buttons = content.components.filter((c) => c.type === 'button');
   assert.deepEqual(
     buttons.map((b) => b.value ?? b.action.key),
-    [1, 0, 'refresh'],
+    [1, 0, 'refresh', 'send_command'],
   );
 });
 
@@ -188,4 +188,102 @@ test('a Refresh clicked again within two minutes serves the last read, no LG cal
   salon.lastPollAt -= FORCED_READ_MIN_INTERVAL_MS;
   await refresh();
   assert.equal(api.stateReads.filter((id) => id === salon.deviceId).length, 2);
+});
+
+// --- "Send a command" (Gladys 5.2+) ----------------------------------------------
+
+const commandButtonOf = (content) =>
+  content.components.find(
+    (c) => c.type === 'button' && c.action?.key === WIDGET_ACTIONS.SEND_COMMAND,
+  );
+
+test('the command form lists the writable properties of the appliance, within budget', async () => {
+  const { gladys, registry, byName } = await setup();
+  const salon = byName('Salon');
+  await registry.pollModel(gladys, salon);
+  const content = applianceWidget.get(gladys, {
+    registry,
+    config,
+    settings: { device: salon.externalId },
+  });
+  assert.deepEqual(validateWidgetContent(content), []);
+  assert.ok(content.components.length <= 8);
+  assert.equal(content.components.filter((c) => c.type === 'button').length, 4);
+
+  const [property, value] = commandButtonOf(content).action.fields;
+  assert.equal(property.key, COMMAND_FIELDS.PROPERTY);
+  assert.equal(property.type, 'select');
+  const writable = [...salon.bindings.values()].filter((b) => b.descriptor.writable);
+  assert.deepEqual(
+    property.options.map((o) => o.value),
+    writable.map((b) => b.descriptor.key),
+  );
+  assert.ok(property.options.some((o) => o.label.en === 'Current job mode'));
+  assert.equal(property.default, property.options[0].value);
+  assert.equal(value.key, COMMAND_FIELDS.VALUE);
+  assert.equal(value.type, 'string');
+  assert.equal(value.required, true);
+});
+
+test('an appliance with nothing writable gets no command form', async () => {
+  const { gladys, registry, byName } = await setup();
+  const buanderie = byName('Buanderie');
+  for (const binding of buanderie.bindings.values()) {
+    binding.descriptor = { ...binding.descriptor, writable: false };
+  }
+  const content = applianceWidget.get(gladys, {
+    registry,
+    config,
+    settings: { device: buanderie.externalId },
+  });
+  assert.deepEqual(validateWidgetContent(content), []);
+  assert.equal(commandButtonOf(content), undefined);
+});
+
+test('the command form goes through send_command: sent, validated, answered', async () => {
+  const { api, gladys, registry, byName } = await setup();
+  const salon = byName('Salon');
+  const send = (values) =>
+    applianceWidget.action(gladys, {
+      registry,
+      actionKey: WIDGET_ACTIONS.SEND_COMMAND,
+      settings: { device: salon.externalId },
+      values,
+    });
+
+  const message = await send({
+    [COMMAND_FIELDS.PROPERTY]: 'air-con-job-mode-current-job-mode',
+    [COMMAND_FIELDS.VALUE]: 'HEAT',
+  });
+  assert.deepEqual(api.controls.at(-1).payload, { airConJobMode: { currentJobMode: 'HEAT' } });
+  assert.deepEqual(message, {
+    en: 'airConJobMode.currentJobMode set to HEAT on Salon.',
+    fr: 'airConJobMode.currentJobMode réglé sur HEAT sur Salon.',
+  });
+  assert.deepEqual(gladys.sceneEvents, [], 'the read after the command stays silent');
+
+  await assert.rejects(
+    send({
+      [COMMAND_FIELDS.PROPERTY]: 'air-con-job-mode-current-job-mode',
+      [COMMAND_FIELDS.VALUE]: 'X',
+    }),
+    /Allowed: COOL \| HEAT \| AIR_DRY/,
+  );
+  await assert.rejects(
+    send({ [COMMAND_FIELDS.PROPERTY]: 'nope', [COMMAND_FIELDS.VALUE]: '1' }),
+    /has no property "nope"/,
+  );
+  assert.equal(api.controls.length, 1);
+});
+
+test('a core that dropped the form gets an explanation, nothing is sent', async () => {
+  const { api, gladys, registry, byName } = await setup();
+  const message = await applianceWidget.action(gladys, {
+    registry,
+    actionKey: WIDGET_ACTIONS.SEND_COMMAND,
+    settings: { device: byName('Salon').externalId },
+  });
+  assert.match(message.en, /Gladys 5\.2/);
+  assert.match(message.fr, /Gladys 5\.2/);
+  assert.deepEqual(api.controls, []);
 });

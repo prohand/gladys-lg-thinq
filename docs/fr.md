@@ -14,7 +14,7 @@ tout moment.
 
 Il vous faut :
 
-- **Gladys 5.1** ou plus récent ;
+- **Gladys 5.2** ou plus récent ;
 - un **compte LG ThinQ** avec vos appareils déjà ajoutés dans l'application
   mobile LG ThinQ (cette intégration découvre les appareils, elle ne les appaire
   pas) ;
@@ -109,8 +109,8 @@ intégrations :
 
 - **Appareil LG** — un appareil choisi dans les réglages de la box : ses valeurs
   en direct (températures, humidité, temps restant…), ce qu'il fait (état,
-  mode), sa connexion au cloud LG, et les boutons **Marche** / **Arrêt** et
-  **Actualiser** ;
+  mode), sa connexion au cloud LG, et les boutons **Marche** / **Arrêt**,
+  **Actualiser** et **Envoyer une commande** ;
 - **Appareils LG** — tous vos appareils LG sur une seule carte, avec pour chacun
   son état (« En cours », « Terminé », « Injoignable »…) et un bouton
   **Actualiser**.
@@ -119,6 +119,14 @@ Les valeurs suivent l'intervalle de rafraîchissement ; **Actualiser** interroge
 LG tout de suite, sauf pour un appareil déjà lu dans les 2 dernières minutes :
 c'est alors sa dernière lecture qui est affichée (chaque appel LG compte dans
 votre quota). Seuls les appareils ajoutés dans Gladys sont affichés.
+
+**Envoyer une commande** ouvre un petit formulaire dans la carte : choisissez
+une des propriétés que l'appareil accepte (ses propriétés modifiables, par
+leur nom) et tapez la valeur — `COOL`, `22`, `true`… Il fait exactement ce que
+fait le bouton **Envoyer une commande** de l'écran de configuration : la
+valeur est vérifiée par rapport à ce que l'appareil accepte avant tout envoi,
+et **Lister les propriétés** affiche les valeurs acceptées. Le bouton est
+absent pour un appareil sans rien de modifiable.
 
 ## Scènes
 

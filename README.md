@@ -88,13 +88,16 @@ Configuration buttons instead: **List the properties** prints what an appliance
 accepts and with which values, **Send a command** sends it, validated against
 the profile first.
 
-## Widgets and scenes (Gladys 5.1)
+## Widgets and scenes (Gladys 5.1, widget forms 5.2)
 
 Declared in the manifest, served by the SDK handlers — no core change:
 
 - **Widgets** — `appliance` (one appliance: live tiles bound to its features,
   a status list of what it is doing, On/Off bound to its power feature, a
-  Refresh button) and `overview` (every added appliance, one status line
+  Refresh button, and a "Send a command" button whose form — a `select` of
+  the writable properties written into the content, a `string` value — runs
+  the Configuration `send_command`; a core older than 5.2 drops the form and
+  gets an explanation instead) and `overview` (every added appliance, one status line
   each). The content is rebuilt from the last read, never from a fresh LG
   call; the registry asks the core to re-pull it (`requestWidgetRefresh`)
   when a read changes what it displays.
