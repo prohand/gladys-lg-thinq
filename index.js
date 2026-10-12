@@ -115,8 +115,14 @@ for (const [key, widget] of Object.entries(WIDGETS)) {
   gladys.onWidgetGet(key, ({ settings }) =>
     widget.get(gladys, { registry, config: runtime.config, settings }),
   );
-  gladys.onWidgetAction(key, async (actionKey, params, { settings }) => {
-    const message = await widget.action(gladys, { registry, actionKey, params, settings });
+  gladys.onWidgetAction(key, async (actionKey, params, { settings, values }) => {
+    const message = await widget.action(gladys, {
+      registry,
+      actionKey,
+      params,
+      settings,
+      values,
+    });
     await runtime.publishTransports();
     return message;
   });

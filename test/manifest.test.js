@@ -13,7 +13,7 @@ import { DEFAULT_CONFIG, MAX_POLL_FREQUENCY, MIN_POLL_FREQUENCY } from '../src/c
 import { SUPPORTED_COUNTRIES, getRegionFromCountry } from '../src/thinq/regions.js';
 import { SCENE_ACTIONS } from '../src/sceneActions.js';
 import { SCENE_TRIGGERS, detectSceneEvents, observeModel } from '../src/sceneTriggers.js';
-import { WIDGETS } from '../src/widgets.js';
+import { WIDGETS, WIDGET_ACTIONS } from '../src/widgets.js';
 import { buildDeviceModel } from '../src/devices/builder.js';
 import { normalizeConfig } from '../src/config.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
@@ -22,6 +22,7 @@ import { WASHTOWER } from './helpers/fixtures.js';
 const manifest = JSON.parse(
   await readFile(new URL('../gladys-assistant-integration.json', import.meta.url), 'utf8'),
 );
+const indexSource = await readFile(new URL('../index.js', import.meta.url), 'utf8');
 
 const fieldNamed = (key) => manifest.config_schema.find((f) => f.key === key);
 
@@ -142,6 +143,18 @@ test('widgets and scene declarations require Gladys >= 5.1.0', () => {
     major > 5 || (major === 5 && minor >= 1),
     `widgets and scenes require gladys_version >= 5.1.0, got "${manifest.gladys_version}"`,
   );
+});
+
+test('the widget command form requires Gladys >= 5.2.0, and index.js relays its values', () => {
+  // Gladys 5.2 is the first release keeping the `fields` of a widget button:
+  // an older core drops the form and runs "Send a command" without values.
+  assert.equal(WIDGET_ACTIONS.SEND_COMMAND, 'send_command');
+  const [major, minor] = minimumGladysVersion();
+  assert.ok(
+    major > 5 || (major === 5 && minor >= 2),
+    `widget button forms require gladys_version >= 5.2.0, got "${manifest.gladys_version}"`,
+  );
+  assert.match(indexSource, /\{ settings, values \}/);
 });
 
 test('every declared widget has its handlers, and vice versa', () => {

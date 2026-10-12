@@ -12,7 +12,7 @@ only credential is a token you create yourself and can revoke at any time.
 
 You need:
 
-- **Gladys 5.1** or newer;
+- **Gladys 5.2** or newer;
 - an **LG ThinQ account** with your appliances already added in the LG ThinQ
   mobile app (this integration discovers appliances, it does not pair them);
 - appliances that are **online** in the app;
@@ -101,7 +101,8 @@ In a dashboard, **Edit** → add a box → integrations category:
 
 - **LG appliance** — one appliance, picked in the box settings: its live values
   (temperatures, humidity, time left…), what it is doing (state, mode), its
-  connection to the LG cloud, and the **On** / **Off** and **Refresh** buttons;
+  connection to the LG cloud, and the **On** / **Off**, **Refresh** and
+  **Send a command** buttons;
 - **LG appliances** — every LG appliance on one card, each with its state
   ("Running", "End", "Unreachable"…) and a **Refresh** button.
 
@@ -109,6 +110,14 @@ Values follow the refresh interval; **Refresh** asks LG right away, except for
 an appliance already read in the last 2 minutes: its last read is shown instead
 (every LG call counts against your quota). Only the appliances added to Gladys
 are shown.
+
+**Send a command** opens a small form in the card: pick one of the properties
+the appliance accepts (its writable properties, listed by name) and type the
+value — `COOL`, `22`, `true`… It does exactly what the **Send a command** button
+of the Configuration screen does: the value is checked against what the
+appliance accepts before anything is sent, and **List the properties** shows
+the accepted values. The button is absent for an appliance with nothing
+writable.
 
 ## Scenes
 

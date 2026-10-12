@@ -6,6 +6,14 @@ All notable changes to this integration are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- `@gladysassistant/integration-sdk` updated to 0.15.0.
+- Requires Gladys 5.2.0: the "LG appliance" widget gains a **Send a command** button whose
+  form picks one of the appliance's writable properties and a value, sent and validated like
+  the Configuration screen's **Send a command** (the card shows one live tile less to make
+  room for it).
+
 ## [2.2.1] - 2026-10-08
 
 ### Fixed

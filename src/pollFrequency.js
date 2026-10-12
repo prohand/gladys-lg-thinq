@@ -13,15 +13,13 @@
 // ticks itself (see `DeviceRegistry.dueForPoll`).
 // -----------------------------------------------------------------------------
 
-/** The values Gladys accepts, in milliseconds. */
-export const DEVICE_POLL_FREQUENCIES = {
-  EVERY_SECONDS: 1 * 1000,
-  EVERY_2_SECONDS: 2 * 1000,
-  EVERY_10_SECONDS: 10 * 1000,
-  EVERY_15_SECONDS: 15 * 1000,
-  EVERY_30_SECONDS: 30 * 1000,
-  EVERY_MINUTES: 60 * 1000,
-};
+import { DEVICE_POLL_FREQUENCIES } from '@gladysassistant/integration-sdk';
+
+/**
+ * The values Gladys accepts, in milliseconds. The SDK mirrors the core's enum:
+ * re-exported rather than copied, so a new cadence reaches this list by itself.
+ */
+export { DEVICE_POLL_FREQUENCIES };
 
 /** Cadence every appliance is registered with: the slowest Gladys allows. */
 export const SCHEDULER_POLL_FREQUENCY = DEVICE_POLL_FREQUENCIES.EVERY_MINUTES;
