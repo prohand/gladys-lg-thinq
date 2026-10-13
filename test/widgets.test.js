@@ -45,10 +45,15 @@ test('the appliance widget shows live tiles, the state and on/off', async () => 
   assert.ok(content.components.filter((c) => c.type === 'value').every((c) => c.device_feature));
 
   const status = content.components.find((c) => c.type === 'status');
-  assert.deepEqual(status.items[0].value, { en: 'Connected', fr: 'Connecté' });
+  assert.deepEqual(status.items[0].value, {
+    en: 'Connected',
+    fr: 'Connecté',
+    de: 'Verbunden',
+    es: 'Conectado',
+  });
   const jobMode = status.items.find((i) => i.value.en === 'Cool');
   assert.ok(jobMode, 'the job mode is listed, translated');
-  assert.equal(jobMode.value.fr, 'Froid');
+  assert.deepEqual(jobMode.value, { en: 'Cool', fr: 'Froid', de: 'Kühlen', es: 'Frío' });
 
   const buttons = content.components.filter((c) => c.type === 'button');
   assert.deepEqual(
@@ -72,6 +77,8 @@ test('the appliance widget colors a finished cycle, and fits a washtower', async
   const finished = items.find((i) => i.value.en === 'End');
   assert.equal(finished.color, WIDGET_COLORS.SUCCESS);
   assert.equal(finished.value.fr, 'Terminé');
+  assert.equal(finished.value.de, 'Beendet');
+  assert.equal(finished.value.es, 'Terminado');
 });
 
 test('the appliance widget waits for the first read instead of inventing values', async () => {
@@ -85,8 +92,13 @@ test('the appliance widget waits for the first read instead of inventing values'
   const status = content.components.find((c) => c.type === 'status');
   assert.deepEqual(status.items, [
     {
-      label: { en: 'Connection', fr: 'Connexion' },
-      value: { en: 'Waiting for a read', fr: 'En attente de lecture' },
+      label: { en: 'Connection', fr: 'Connexion', de: 'Verbindung', es: 'Conexión' },
+      value: {
+        en: 'Waiting for a read',
+        fr: 'En attente de lecture',
+        de: 'Warte auf Abfrage',
+        es: 'Esperando una lectura',
+      },
       color: WIDGET_COLORS.NEUTRAL,
     },
   ]);
@@ -259,6 +271,8 @@ test('the command form goes through send_command: sent, validated, answered', as
   assert.deepEqual(message, {
     en: 'airConJobMode.currentJobMode set to HEAT on Salon.',
     fr: 'airConJobMode.currentJobMode réglé sur HEAT sur Salon.',
+    de: 'airConJobMode.currentJobMode von Salon auf HEAT gesetzt.',
+    es: 'airConJobMode.currentJobMode ajustado a HEAT en Salon.',
   });
   assert.deepEqual(gladys.sceneEvents, [], 'the read after the command stays silent');
 

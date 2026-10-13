@@ -16,6 +16,7 @@ import { SCENE_TRIGGERS, detectSceneEvents, observeModel } from '../src/sceneTri
 import { WIDGETS, WIDGET_ACTIONS } from '../src/widgets.js';
 import { buildDeviceModel } from '../src/devices/builder.js';
 import { normalizeConfig } from '../src/config.js';
+import { LANGUAGES } from '../src/languages.js';
 import { createFakeGladys } from './helpers/fakeGladys.js';
 import { WASHTOWER } from './helpers/fixtures.js';
 
@@ -229,5 +230,52 @@ test('scene and widget keys follow the core rules', () => {
   }
   for (const declaration of [...manifest.scene_triggers, ...manifest.scene_actions]) {
     assert.match(declaration.key, /^[a-z0-9_]{1,40}$/);
+  }
+});
+
+/** Every multi-language object of the manifest, with where it sits. */
+function multiLanguageTexts(value, path = '') {
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) => multiLanguageTexts(item, `${path}[${index}]`));
+  }
+  if (value && typeof value === 'object') {
+    if (typeof value.en === 'string') {
+      return [{ path, text: value }];
+    }
+    return Object.entries(value).flatMap(([key, item]) =>
+      multiLanguageTexts(item, `${path}.${key}`),
+    );
+  }
+  return [];
+}
+
+test('every user-facing text speaks the four languages of Gladys', () => {
+  const countryLabels = new Set(fieldNamed('country_code').options.map((option) => option.label));
+  for (const { path, text } of multiLanguageTexts(manifest)) {
+    // The country names stay in English only, as LG lists them: the core
+    // falls back to English for every reader.
+    if (countryLabels.has(text)) {
+      assert.deepEqual(Object.keys(text), ['en'], path);
+      continue;
+    }
+    assert.deepEqual(Object.keys(text), LANGUAGES, `${path} must carry ${LANGUAGES.join(', ')}`);
+    for (const lang of LANGUAGES) {
+      assert.ok(text[lang].trim().length > 0, `${path}.${lang} must not be empty`);
+    }
+  }
+});
+
+test('the texts respect the store length limits in every language', () => {
+  for (const lang of LANGUAGES) {
+    const length = manifest.description[lang].length;
+    assert.ok(length >= 10 && length <= 100, `description.${lang} must be 10-100 chars`);
+  }
+  for (const section of manifest.config_schema.filter((f) => f.type === 'section')) {
+    for (const lang of LANGUAGES) {
+      assert.ok(
+        (section.description?.[lang] ?? '').length <= 1000,
+        `section "${section.key}" description.${lang} must be <= 1000 chars`,
+      );
+    }
   }
 });

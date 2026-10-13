@@ -83,7 +83,7 @@ export function warnLegacyDevices(gladys, models) {
   if (legacy.length > 0) {
     logger.warn(
       `${legacy.join(', ')}: added with an old identifier, no longer updated. ` +
-        'Delete them in Gladys, then add them again from the Discovery tab.',
+        'Delete them in Gladys, then add them again from the Discover tab.',
     );
   }
   return legacy;
@@ -535,6 +535,8 @@ export class DeviceRegistry {
             message: {
               en: 'The appliance is not connected to the LG cloud.',
               fr: "L'appareil n'est pas connecté au cloud LG.",
+              de: 'Das Gerät ist nicht mit der LG-Cloud verbunden.',
+              es: 'El electrodoméstico no está conectado a la nube de LG.',
             },
           }
         : {}),

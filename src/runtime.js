@@ -24,17 +24,23 @@ export function describeFailure(err) {
     return {
       en: 'LG refused the credentials: check the Personal Access Token and the country.',
       fr: "LG a refusé les identifiants : vérifiez le jeton d'accès personnel et le pays.",
+      de: 'LG hat die Zugangsdaten abgelehnt: Prüfe das Personal Access Token und das Land.',
+      es: 'LG ha rechazado las credenciales: compruebe el token de acceso personal y el país.',
     };
   }
   if (err instanceof ThinqApiError && err.isRateLimited) {
     return {
       en: 'LG ThinQ call quota exceeded, increase the refresh interval.',
       fr: "Quota d'appels LG ThinQ dépassé, augmentez l'intervalle de rafraîchissement.",
+      de: 'Aufrufkontingent von LG ThinQ überschritten, erhöhe das Aktualisierungsintervall.',
+      es: 'Se ha superado la cuota de llamadas de LG ThinQ, aumente el intervalo de actualización.',
     };
   }
   return {
     en: 'Could not reach LG ThinQ, check the integration logs.',
     fr: "Impossible de joindre LG ThinQ, consultez les logs de l'intégration.",
+    de: 'LG ThinQ ist nicht erreichbar, sieh in den Protokollen der Integration nach.',
+    es: 'No se puede contactar con LG ThinQ, consulte los registros de la integración.',
   };
 }
 
@@ -99,6 +105,8 @@ export function createRuntime(
       await setStatus(false, {
         en: 'Enter your LG ThinQ Personal Access Token and your country to get started.',
         fr: "Renseignez votre jeton d'accès personnel LG ThinQ et votre pays pour commencer.",
+        de: 'Gib dein LG ThinQ Personal Access Token und dein Land ein, um zu beginnen.',
+        es: 'Introduzca su token de acceso personal de LG ThinQ y su país para empezar.',
       });
       return;
     }
@@ -114,6 +122,8 @@ export function createRuntime(
       await setStatus(false, {
         en: `LG ThinQ does not accept the country "${config.country_code}": enter the country the LG account was created in.`,
         fr: `LG ThinQ n'accepte pas le pays « ${config.country_code} » : indiquez le pays de création du compte LG.`,
+        de: `LG ThinQ akzeptiert das Land "${config.country_code}" nicht: Gib das Land an, in dem das LG-Konto erstellt wurde.`,
+        es: `LG ThinQ no acepta el país "${config.country_code}": indique el país en el que se creó la cuenta LG.`,
       });
       return;
     }

@@ -38,7 +38,7 @@ LG's own documentation for this screen:
 1. Open the LG ThinQ integration in Gladys, **Configuration** tab.
 2. Paste the token in **Personal Access Token**.
 3. Pick the **country of the LG account**.
-4. Save.
+4. Click **Save configuration**.
 5. Click **Test the connection**: Gladys answers with the region it reached and
    the list of appliances it found. If that works, your appliances appear in the
    **Devices** tab within a few seconds.
@@ -72,7 +72,7 @@ So what you see depends on your hardware, not on a hard-coded list:
 
 An appliance is read as soon as you add it, so its features carry a value right
 away; everything is then refreshed on the interval you configured. Gladys shows
-a **badge** on each appliance: `cloud` when LG answers, `unreachable` (orange)
+a **badge** on each appliance: **Cloud** when LG answers, **Unreachable** (orange)
 when the appliance is unplugged or off the network.
 
 ## Controlling something Gladys has no feature for
@@ -97,9 +97,9 @@ through two buttons in the **Configuration** tab:
 
 ## Dashboard widgets
 
-In a dashboard, **Edit** → add a box → integrations category:
+**Dashboard → Edit → New widget**, **Integration widgets** section:
 
-- **LG appliance** — one appliance, picked in the box settings: its live values
+- **LG appliance** — one appliance, picked in the widget settings: its live values
   (temperatures, humidity, time left…), what it is doing (state, mode), its
   connection to the LG cloud, and the **On** / **Off**, **Refresh** and
   **Send a command** buttons;
@@ -114,7 +114,7 @@ are shown.
 **Send a command** opens a small form in the card: pick one of the properties
 the appliance accepts (its writable properties, listed by name) and type the
 value — `COOL`, `22`, `true`… It does exactly what the **Send a command** button
-of the Configuration screen does: the value is checked against what the
+of the **Configuration** tab does: the value is checked against what the
 appliance accepts before anything is sent, and **List the properties** shows
 the accepted values. The button is absent for an appliance with nothing
 writable.
@@ -123,7 +123,7 @@ writable.
 
 ### Triggers
 
-In the scene editor, **Integrations** category:
+In a scene, **Add trigger → Integrations**:
 
 | Trigger                                  | When                                                   |
 | ---------------------------------------- | ------------------------------------------------------ |
@@ -151,6 +151,8 @@ Good to know:
 
 ### Actions
 
+In a scene, **New action → Integrations**:
+
 | Action                           | What it does                                                                                       |
 | -------------------------------- | -------------------------------------------------------------------------------------------------- |
 | **LG appliance: send a command** | Like the **Send a command** button: any property, checked before being sent                        |
@@ -172,11 +174,11 @@ the ThinQ app, and pick the country the account was created in.
 created (create a new token with the right scopes), or it was added to the LG
 app after Gladys last looked. Click **Refresh the appliance list**.
 
-**An appliance shows an orange `unreachable` badge** — LG reports it as not
+**An appliance shows an orange **Unreachable** badge** — LG reports it as not
 connected. Check it is powered and connected to Wi-Fi in the LG ThinQ app; the
 badge clears itself on the next refresh.
 
-**An appliance I just added shows "no recent value"** — the appliance is read
+**An appliance I just added shows "No recent value"** — the appliance is read
 the moment you add it, so this means LG had nothing to report at that instant:
 the appliance is usually off the network (check for the orange badge). The next
 refresh fills the features as soon as LG answers again.
@@ -184,7 +186,7 @@ refresh fills the features as soon as LG answers again.
 **The LG appliance widget shows "settings.device: must be at most 100
 characters"** — the appliance was added with version 2.0.0 or older, whose
 identifier was too long for a widget. After the update, delete the appliance in
-Gladys, add it again from the **Discovery** tab, then pick it again in the
+Gladys, add it again from the **Discover** tab, then pick it again in the
 widget settings. The history of the old device and the scenes using it must be
 redone.
 
@@ -193,8 +195,8 @@ of each client, and one refresh costs one call per appliance.
 
 **A command is refused** — LG rejects commands an appliance cannot honor in its
 current state (starting a washing machine whose door is open, changing the mode
-while it is off). The reason is shown under the button and in the integration
-logs.
+while it is off). The reason is shown under the button and in the integration's
+**Logs** tab.
 
 ## Privacy
 

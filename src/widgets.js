@@ -20,6 +20,7 @@ import { ACTIONS } from './actions.js';
 import { createdExternalIds, FORCED_READ_MIN_INTERVAL_MS } from './devices/index.js';
 import { readStateValue } from './devices/profile.js';
 import { isRunStateBinding, runStateColor, translateValue } from './devices/runState.js';
+import { LANGUAGES, sameInEveryLanguage } from './languages.js';
 
 export const WIDGET_KEYS = {
   APPLIANCE: 'appliance',
@@ -52,36 +53,79 @@ const MIN_TTL_SECONDS = 10;
 const MAX_TTL_SECONDS = 3600;
 
 const TEXTS = {
-  connection: { en: 'Connection', fr: 'Connexion' },
-  connected: { en: 'Connected', fr: 'Connecté' },
-  unreachable: { en: 'Unreachable', fr: 'Injoignable' },
-  waiting: { en: 'Waiting for a read', fr: 'En attente de lecture' },
-  on: { en: 'On', fr: 'Marche' },
-  off: { en: 'Off', fr: 'Arrêt' },
-  refresh: { en: 'Refresh', fr: 'Actualiser' },
-  refreshed: { en: 'Appliance refreshed', fr: 'Appareil actualisé' },
-  sendCommand: { en: 'Send a command', fr: 'Envoyer une commande' },
-  property: { en: 'Property', fr: 'Propriété' },
-  value: { en: 'Value', fr: 'Valeur' },
-  valuePlaceholder: { en: 'e.g. COOL, 22, true', fr: 'ex. COOL, 22, true' },
+  connection: { en: 'Connection', fr: 'Connexion', de: 'Verbindung', es: 'Conexión' },
+  connected: { en: 'Connected', fr: 'Connecté', de: 'Verbunden', es: 'Conectado' },
+  unreachable: { en: 'Unreachable', fr: 'Injoignable', de: 'Nicht erreichbar', es: 'Inaccesible' },
+  waiting: {
+    en: 'Waiting for a read',
+    fr: 'En attente de lecture',
+    de: 'Warte auf Abfrage',
+    es: 'Esperando una lectura',
+  },
+  on: { en: 'On', fr: 'Marche', de: 'Ein', es: 'Encender' },
+  off: { en: 'Off', fr: 'Arrêt', de: 'Aus', es: 'Apagar' },
+  refresh: { en: 'Refresh', fr: 'Actualiser', de: 'Aktualisieren', es: 'Actualizar' },
+  refreshed: {
+    en: 'Appliance refreshed',
+    fr: 'Appareil actualisé',
+    de: 'Gerät aktualisiert',
+    es: 'Electrodoméstico actualizado',
+  },
+  sendCommand: {
+    en: 'Send a command',
+    fr: 'Envoyer une commande',
+    de: 'Befehl senden',
+    es: 'Enviar un comando',
+  },
+  property: { en: 'Property', fr: 'Propriété', de: 'Eigenschaft', es: 'Propiedad' },
+  value: { en: 'Value', fr: 'Valeur', de: 'Wert', es: 'Valor' },
+  valuePlaceholder: {
+    en: 'e.g. COOL, 22, true',
+    fr: 'ex. COOL, 22, true',
+    de: 'z. B. COOL, 22, true',
+    es: 'p. ej. COOL, 22, true',
+  },
   valueHelp: {
-    en: 'The values each property accepts are listed by "List the properties" in the Configuration screen.',
+    en: 'The values each property accepts are listed by "List the properties" in the Configuration tab.',
     fr: "Les valeurs acceptées par chaque propriété sont listées par « Lister les propriétés » dans l'écran de configuration.",
+    de: 'Die Werte, die jede Eigenschaft akzeptiert, listet "Eigenschaften auflisten" im Tab "Konfiguration" auf.',
+    es: 'Los valores que acepta cada propiedad aparecen con "Mostrar las propiedades" en la pestaña "Configuración".',
   },
   needsForm: {
-    en: 'This button needs Gladys 5.2 or later. Use "Send a command" in the Configuration screen meanwhile.',
+    en: 'This button needs Gladys 5.2 or later. Use "Send a command" in the Configuration tab meanwhile.',
     fr: "Ce bouton demande Gladys 5.2 ou plus. Utilisez « Envoyer une commande » dans l'écran de configuration d'ici là.",
+    de: 'Diese Schaltfläche erfordert Gladys 5.2 oder neuer. Verwende bis dahin "Befehl senden" im Tab "Konfiguration".',
+    es: 'Este botón requiere Gladys 5.2 o posterior. Mientras tanto, use "Enviar un comando" en la pestaña "Configuración".',
   },
-  allRefreshed: { en: 'Appliances refreshed', fr: 'Appareils actualisés' },
+  allRefreshed: {
+    en: 'Appliances refreshed',
+    fr: 'Appareils actualisés',
+    de: 'Geräte aktualisiert',
+    es: 'Electrodomésticos actualizados',
+  },
   unknownAppliance: {
     en: 'This appliance is not known to the LG ThinQ integration: check its configuration, or pick another appliance in the widget settings.',
     fr: "Cet appareil n'est pas connu de l'intégration LG ThinQ : vérifiez sa configuration, ou choisissez un autre appareil dans les réglages du widget.",
+    de: 'Dieses Gerät ist der Integration LG ThinQ nicht bekannt: Prüfe ihre Konfiguration oder wähle in den Widget-Einstellungen ein anderes Gerät.',
+    es: 'La integración LG ThinQ no conoce este electrodoméstico: compruebe su configuración o elija otro electrodoméstico en los ajustes del widget.',
   },
   noAppliance: {
-    en: 'No LG appliance added yet: add them from the Discovery tab of the integration.',
+    en: 'No LG appliance added yet: add them from the Discover tab of the integration.',
     fr: "Aucun appareil LG ajouté pour l'instant : ajoutez-les depuis l'onglet Découverte de l'intégration.",
+    de: 'Noch kein LG-Gerät hinzugefügt: Füge deine Geräte im Tab "Entdecken" der Integration hinzu.',
+    es: 'Aún no se ha añadido ningún electrodoméstico LG: añádalos desde la pestaña "Descubrir" de la integración.',
   },
 };
+
+/** "… and 3 more", under a list cut to the core budget. */
+function moreText(hidden) {
+  return {
+    en: `… and ${hidden} more`,
+    fr: `… et ${hidden} autre(s)`,
+    de: `… und ${hidden} weitere`,
+    es: `… y ${hidden} más`,
+  };
+}
 
 /** Shorten a text to the core bound, visibly. */
 function clip(text, max) {
@@ -222,7 +266,7 @@ export function commandOptions(model) {
   }
   return writable.map(({ value, name, path }) => {
     const label = clip(count.get(name) > 1 ? path : name, FIELD_OPTION_LABEL_LENGTH);
-    return { value, label: { en: label, fr: label } };
+    return { value, label: sameInEveryLanguage(label) };
   });
 }
 
@@ -315,7 +359,7 @@ function overviewItem(model) {
   }
   // A washtower has two run states (washer, dryer): both fit on one line.
   const value = Object.fromEntries(
-    ['en', 'fr'].map((lang) => [
+    LANGUAGES.map((lang) => [
       lang,
       clip(runStates.map((raw) => translateValue(raw)[lang]).join(' / '), STATUS_TEXT_LENGTH),
     ]),
@@ -346,7 +390,7 @@ export function buildOverviewContent(gladys, { registry, config }) {
             {
               type: 'text',
               variant: 'caption',
-              text: { en: `… and ${hidden} more`, fr: `… et ${hidden} autre(s)` },
+              text: moreText(hidden),
             },
           ]
         : []),

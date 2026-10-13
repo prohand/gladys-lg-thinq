@@ -48,6 +48,8 @@ export const ACTIONS = {
       return {
         en: 'Connected to LG ThinQ, but this account has no appliance registered.',
         fr: "Connexion à LG ThinQ réussie, mais aucun appareil n'est enregistré sur ce compte.",
+        de: 'Mit LG ThinQ verbunden, aber auf diesem Konto ist kein Gerät registriert.',
+        es: 'Conectado a LG ThinQ, pero esta cuenta no tiene ningún electrodoméstico registrado.',
       };
     }
     const names = devices
@@ -56,6 +58,8 @@ export const ACTIONS = {
     return {
       en: `Connected (region ${api.region}). ${devices.length} appliance(s): ${names}.`,
       fr: `Connecté (région ${api.region}). ${devices.length} appareil(s) : ${names}.`,
+      de: `Verbunden (Region ${api.region}). ${devices.length} Gerät(e): ${names}.`,
+      es: `Conectado (región ${api.region}). ${devices.length} electrodoméstico(s): ${names}.`,
     };
   },
 
@@ -69,6 +73,8 @@ export const ACTIONS = {
     return {
       en: `${devices.length} appliance(s) published to Gladys.`,
       fr: `${devices.length} appareil(s) publié(s) dans Gladys.`,
+      de: `${devices.length} Gerät(e) in Gladys veröffentlicht.`,
+      es: `${devices.length} electrodoméstico(s) publicado(s) en Gladys.`,
     };
   },
 
@@ -85,6 +91,8 @@ export const ACTIONS = {
       return {
         en: `${model.name} exposes no writable property.`,
         fr: `${model.name} n'expose aucune propriété modifiable.`,
+        de: `${model.name} stellt keine änderbare Eigenschaft bereit.`,
+        es: `${model.name} no expone ninguna propiedad modificable.`,
       };
     }
 
@@ -94,6 +102,8 @@ export const ACTIONS = {
     return {
       en: `${model.name} accepts:\n${list}${more > 0 ? `\n… and ${more} more.` : ''}`,
       fr: `${model.name} accepte :\n${list}${more > 0 ? `\n… et ${more} autre(s).` : ''}`,
+      de: `${model.name} akzeptiert:\n${list}${more > 0 ? `\n… und ${more} weitere.` : ''}`,
+      es: `${model.name} acepta:\n${list}${more > 0 ? `\n… y ${more} más.` : ''}`,
     };
   },
 
@@ -103,6 +113,8 @@ export const ACTIONS = {
     return {
       en: `${binding.descriptor.path} set to ${value} on ${model.name}.`,
       fr: `${binding.descriptor.path} réglé sur ${value} sur ${model.name}.`,
+      de: `${binding.descriptor.path} von ${model.name} auf ${value} gesetzt.`,
+      es: `${binding.descriptor.path} ajustado a ${value} en ${model.name}.`,
     };
   },
 };

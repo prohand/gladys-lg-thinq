@@ -26,7 +26,8 @@ and started from the
   the network.
 
 User documentation — the part that matters if you just want to _use_ it:
-[`docs/en.md`](./docs/en.md) · [`docs/fr.md`](./docs/fr.md).
+[`docs/en.md`](./docs/en.md) · [`docs/fr.md`](./docs/fr.md) · [`docs/de.md`](./docs/de.md) ·
+[`docs/es.md`](./docs/es.md).
 
 ## How the mapping works
 
@@ -132,6 +133,7 @@ regular read reports the transition instead.
 │  ├─ sceneTriggers.js               # read -> read transitions -> scene events
 │  ├─ sceneActions.js                # the two scene-editor actions
 │  ├─ widgets.js                     # the two dashboard widgets (content + buttons)
+│  ├─ languages.js                   # the languages of the messages (en, fr, de, es)
 │  ├─ thinq/                         # ← everything that talks to LG
 │  │  ├─ api.js                      #   REST client (devices, profile, state, control)
 │  │  ├─ regions.js                  #   country -> regional API host
@@ -144,7 +146,7 @@ regular read reports the transition instead.
 │     ├─ featureMap.js               #   ThinQ property -> Gladys feature rules
 │     ├─ runState.js                 #   run state: finished?, translation, color
 │     └─ builder.js                  #   appliance + profile -> Gladys device
-├─ docs/{en,fr}.md                   # user documentation, re-hosted by Gladys
+├─ docs/{en,fr,de,es}.md             # user documentation, re-hosted by Gladys
 ├─ gladys-assistant-integration.json # manifest (config form, actions, widgets, scenes)
 └─ Dockerfile                        # Node 24 Alpine, read-only rootfs ready
 ```
