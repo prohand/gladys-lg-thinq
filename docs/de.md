@@ -1,38 +1,38 @@
 # LG ThinQ
 
-Diese Integration verbindet Gladys Assistant mit den Geräten, die in Ihrem
+Diese Integration verbindet Gladys Assistant mit den Geräten, die in deinem
 LG-Konto registriert sind — Klimaanlage, Waschmaschine, Trockner,
 Geschirrspüler, Kühlschrank, Backofen, Luftreiniger, Saugroboter… — über die
 **offizielle ThinQ Connect API von LG**.
 
 Es ist eine **Cloud**-Integration: Gladys spricht mit den Servern von LG, und LG
-spricht mit Ihren Geräten. Nichts ist per Reverse Engineering nachgebaut, und
+spricht mit deinen Geräten. Nichts ist per Reverse Engineering nachgebaut, und
 es wird kein Passwort gespeichert: Die einzige Zugangsberechtigung ist ein
-Token, das Sie selbst erstellen und jederzeit widerrufen können.
+Token, das du selbst erstellst und jederzeit widerrufen kannst.
 
-## Bevor Sie beginnen
+## Bevor du beginnst
 
-Sie benötigen:
+Du benötigst:
 
 - **Gladys 5.2** oder neuer;
-- ein **LG ThinQ-Konto**, in dem Ihre Geräte bereits in der mobilen LG ThinQ
+- ein **LG ThinQ-Konto**, in dem deine Geräte bereits in der mobilen LG ThinQ
   App hinzugefügt sind (diese Integration entdeckt Geräte, sie koppelt sie
   nicht);
 - Geräte, die in der App **online** sind;
-- das **Land**, in dem Ihr LG-Konto erstellt wurde — LG speichert die Konten auf
+- das **Land**, in dem dein LG-Konto erstellt wurde — LG speichert die Konten auf
   regionalen Servern, und die falsche Region antwortet einfach mit „unbekannter
   Benutzer“.
 
 ## Schritt 1 — Ein Personal Access Token erstellen
 
-1. Öffnen Sie <https://connect-pat.lgthinq.com> und melden Sie sich mit **dem
-   gleichen LG-Konto** an, das Sie in der ThinQ App verwenden.
-2. Klicken Sie auf **Create New Token**.
-3. Geben Sie dem Token einen Namen (zum Beispiel `Gladys`).
-4. Haken Sie die **Berechtigungen** (Scopes) der Geräte an, die Sie in Gladys
-   verwenden möchten. Fehlt eine Berechtigung, ist das Gerät für die
-   Integration unsichtbar — haken Sie im Zweifel alles an.
-5. Klicken Sie auf **Create Token** und kopieren Sie das Token — LG zeigt es nur
+1. Öffne <https://connect-pat.lgthinq.com> und melde dich mit **dem
+   gleichen LG-Konto** an, das du in der ThinQ App verwendest.
+2. Klicke auf **Create New Token**.
+3. Gib dem Token einen Namen (zum Beispiel `Gladys`).
+4. Hake die **Berechtigungen** (Scopes) der Geräte an, die du in Gladys
+   verwenden möchtest. Fehlt eine Berechtigung, ist das Gerät für die
+   Integration unsichtbar — hake im Zweifel alles an.
+5. Klicke auf **Create Token** und kopiere das Token — LG zeigt es nur
    ein einziges Mal an.
 
 Die Dokumentation von LG zu dieser Seite:
@@ -40,45 +40,45 @@ Die Dokumentation von LG zu dieser Seite:
 
 ## Schritt 2 — Die Integration in Gladys konfigurieren
 
-1. Öffnen Sie die Integration LG ThinQ in Gladys, Tab **Konfiguration**.
-2. Fügen Sie das Token in **Personal Access Token** ein.
-3. Wählen Sie das **Land des LG-Kontos**.
-4. Klicken Sie auf **Konfiguration speichern**.
-5. Klicken Sie auf **Verbindung testen**: Gladys antwortet mit der erreichten
-   Region und der Liste der gefundenen Geräte. Wenn das klappt, erscheinen Ihre
+1. Öffne die Integration LG ThinQ in Gladys, Tab **Konfiguration**.
+2. Füge das Token in **Personal Access Token** ein.
+3. Wähle das **Land des LG-Kontos**.
+4. Klicke auf **Konfiguration speichern**.
+5. Klicke auf **Verbindung testen**: Gladys antwortet mit der erreichten
+   Region und der Liste der gefundenen Geräte. Wenn das klappt, erscheinen deine
    Geräte innerhalb weniger Sekunden im Tab **Geräte**.
 
 Die übrigen Einstellungen sind optional:
 
 - **Aktualisierungsintervall** — wie oft jedes Gerät abgefragt wird (Standard
   5 Minuten, höchstens einmal pro Minute). LG begrenzt die API-Aufrufe pro
-  Client, und jedes Gerät kostet einen Aufruf pro Aktualisierung: Senken Sie
-  den Wert nur, wenn Sie wenige Geräte besitzen.
+  Client, und jedes Gerät kostet einen Aufruf pro Aktualisierung: Senke
+  den Wert nur, wenn du wenige Geräte besitzt.
 - **Temperatureinheit** — LG veröffentlicht jede Temperatur doppelt, in Celsius
   und in Fahrenheit. Nur die gewählte Einheit wird zu einer Gladys-Funktion.
 - **Alle numerischen Eigenschaften bereitstellen** — standardmäßig aus.
-  Schalten Sie es ein, um auch die Zeitplan-Verschiebungen und Zähler zu
+  Schalte es ein, um auch die Zeitplan-Verschiebungen und Zähler zu
   erhalten, die LG bereitstellt; nützlich, um zu erkunden, was ein bestimmtes
   Gerät meldet.
 
-## Was Sie erhalten
+## Was du erhältst
 
 Die Integration liest das **Profil** jedes Geräts — die Beschreibung von LG,
 was genau dieses Modell melden und annehmen kann — und baut daraus die
-Gladys-Funktionen. Was Sie sehen, hängt also von Ihrer Hardware ab, nicht von
+Gladys-Funktionen. Was du siehst, hängt also von deiner Hardware ab, nicht von
 einer fest einprogrammierten Liste:
 
-| Was LG bereitstellt                                     | Was Sie in Gladys erhalten                        |
+| Was LG bereitstellt                                     | Was du in Gladys erhältst                         |
 | ------------------------------------------------------- | ------------------------------------------------- |
 | Ein/Aus und andere Ein/Aus-Optionen                     | Ein Schalter, steuerbar und in Szenen verwendbar  |
-| Zieltemperatur                                          | Ein Sollwert, mit den Grenzen Ihres Modells       |
+| Zieltemperatur                                          | Ein Sollwert, mit den Grenzen deines Modells      |
 | Aktuelle Temperatur, Luftfeuchtigkeit, PM2.5, PM10, CO2 | Sensoren, mit Verlauf und Diagrammen              |
 | Filterlebensdauer, Akku                                 | Sensoren, in Prozent                              |
 | Restzeit eines Zyklus                                   | Eine Dauer, in Stunden und Minuten                |
 | Tür offen/geschlossen                                   | Ein Öffnungssensor                                |
 | Betriebsmodus, Betriebszustand, Programmname            | Eine Textfunktion, als Szenen-Auslöser verwendbar |
 
-Ein Gerät wird abgefragt, sobald Sie es hinzufügen, sodass seine Funktionen
+Ein Gerät wird abgefragt, sobald du es hinzufügst, sodass seine Funktionen
 sofort einen Wert haben; danach wird alles im konfigurierten Intervall
 aktualisiert. Gladys zeigt an jedem Gerät ein **Abzeichen**: `cloud`, wenn LG
 antwortet, `unreachable` (orange), wenn das Gerät ausgesteckt oder nicht im
@@ -86,12 +86,12 @@ Netzwerk ist.
 
 ## Etwas steuern, wofür Gladys keine Funktion hat
 
-Die Modi von LG sind modellspezifisch: Ihre Klimaanlage akzeptiert vielleicht
+Die Modi von LG sind modellspezifisch: Deine Klimaanlage akzeptiert vielleicht
 `COOL`, `HEAT`, `AIR_DRY`, während eine andere auch `ENERGY_SAVING` akzeptiert.
 Die Gladys-Funktionen decken das Universelle ab (Ein/Aus, Temperatur, Sensoren);
 alles andere ist über zwei Schaltflächen im Tab **Konfiguration** erreichbar:
 
-1. **Eigenschaften auflisten** — wählen Sie ein Gerät, und Gladys zeigt jede
+1. **Eigenschaften auflisten** — wähle ein Gerät, und Gladys zeigt jede
    Eigenschaft, die es akzeptiert, mit den genau zulässigen Werten, zum
    Beispiel:
 
@@ -101,15 +101,14 @@ alles andere ist über zwei Schaltflächen im Tab **Konfiguration** erreichbar:
    airFlow.windStrength = LOW | MID | HIGH
    ```
 
-2. **Befehl senden** — wählen Sie das Gerät, fügen Sie den Namen der
+2. **Befehl senden** — wähle das Gerät, füge den Namen der
    Eigenschaft und den Wert ein. Der Befehl wird vor dem Senden mit dem Profil
    abgeglichen, sodass ein Tippfehler mit der Liste der zulässigen Werte
    abgelehnt wird, statt stillschweigend zu scheitern.
 
 ## Dashboard-Widgets
 
-In einem Dashboard **Bearbeiten** → ein Widget hinzufügen → Bereich
-**Integrations-Widgets**:
+**Dashboard → Bearbeiten → Neues Widget**, Bereich **Integrations-Widgets**:
 
 - **LG-Gerät** — ein Gerät, in den Widget-Einstellungen gewählt: seine
   Live-Werte (Temperaturen, Luftfeuchtigkeit, Restzeit…), was es gerade tut
@@ -122,12 +121,12 @@ In einem Dashboard **Bearbeiten** → ein Widget hinzufügen → Bereich
 Die Werte folgen dem Aktualisierungsintervall; **Aktualisieren** fragt LG
 sofort ab, außer bei einem Gerät, das in den letzten 2 Minuten bereits
 abgefragt wurde: Dann wird seine letzte Abfrage angezeigt (jeder LG-Aufruf
-zählt gegen Ihr Kontingent). Nur die zu Gladys hinzugefügten Geräte werden
+zählt gegen dein Kontingent). Nur die zu Gladys hinzugefügten Geräte werden
 angezeigt.
 
-**Befehl senden** öffnet ein kleines Formular in der Karte: Wählen Sie eine der
+**Befehl senden** öffnet ein kleines Formular in der Karte: Wähle eine der
 Eigenschaften, die das Gerät akzeptiert (seine änderbaren Eigenschaften, nach
-Namen aufgelistet), und geben Sie den Wert ein — `COOL`, `22`, `true`… Es
+Namen aufgelistet), und gib den Wert ein — `COOL`, `22`, `true`… Es
 macht genau dasselbe wie die Schaltfläche **Befehl senden** im Tab
 Konfiguration: Der Wert wird mit dem abgeglichen, was das Gerät akzeptiert,
 bevor irgendetwas gesendet wird, und **Eigenschaften auflisten** zeigt die
@@ -138,7 +137,7 @@ Schaltfläche.
 
 ### Auslöser
 
-Im Szenen-Editor, Kategorie **Integrationen**:
+In einer Szene **Auslöser hinzufügen → Integrationen**:
 
 | Auslöser                                      | Wann                                                                      |
 | --------------------------------------------- | ------------------------------------------------------------------------- |
@@ -167,6 +166,8 @@ Gut zu wissen:
 
 ### Aktionen
 
+In einer Szene **Neue Aktion → Integrationen**:
+
 | Aktion                      | Was sie tut                                                                                                        |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | **LG-Gerät: Befehl senden** | Wie die Schaltfläche **Befehl senden**: jede Eigenschaft, vor dem Senden geprüft                                   |
@@ -181,34 +182,34 @@ innerhalb dieses Abstands erhält die Szene die letzte Abfrage.
 ## Fehlerbehebung
 
 **„LG hat die Zugangsdaten abgelehnt“** — das Token oder das Land ist falsch.
-Tokens sind an das Konto gebunden, das sie erstellt hat: Prüfen Sie, dass Sie
-dasselbe LG-Konto wie in der ThinQ App verwendet haben, und wählen Sie das
+Tokens sind an das Konto gebunden, das sie erstellt hat: Prüfe, dass du
+dasselbe LG-Konto wie in der ThinQ App verwendet hast, und wähle das
 Land, in dem das Konto erstellt wurde.
 
 **Ein Gerät fehlt** — entweder wurde seine Berechtigung beim Erstellen des
-Tokens nicht angehakt (erstellen Sie ein neues Token mit den richtigen
+Tokens nicht angehakt (erstelle ein neues Token mit den richtigen
 Berechtigungen), oder es wurde der LG-App hinzugefügt, nachdem Gladys zuletzt
-nachgesehen hat. Klicken Sie auf **Geräteliste aktualisieren**.
+nachgesehen hat. Klicke auf **Geräteliste aktualisieren**.
 
 **Ein Gerät zeigt ein oranges Abzeichen `unreachable`** — LG meldet es als
-nicht verbunden. Prüfen Sie in der LG ThinQ App, dass es mit Strom versorgt
+nicht verbunden. Prüfe in der LG ThinQ App, dass es mit Strom versorgt
 und mit dem WLAN verbunden ist; das Abzeichen verschwindet bei der nächsten
 Aktualisierung von selbst.
 
 **Ein gerade hinzugefügtes Gerät zeigt „Kein aktueller Wert“** — das Gerät wird
-in dem Moment abgefragt, in dem Sie es hinzufügen; das bedeutet also, dass LG
+in dem Moment abgefragt, in dem du es hinzufügst; das bedeutet also, dass LG
 in diesem Augenblick nichts zu melden hatte: Das Gerät ist meist nicht im
-Netzwerk (achten Sie auf das orange Abzeichen). Die nächste Aktualisierung
+Netzwerk (achte auf das orange Abzeichen). Die nächste Aktualisierung
 füllt die Funktionen, sobald LG wieder antwortet.
 
 **Das Widget LG-Gerät zeigt „settings.device: must be at most 100
 characters“** — das Gerät wurde mit Version 2.0.0 oder älter hinzugefügt, deren
-Kennung für ein Widget zu lang war. Löschen Sie nach dem Update das Gerät in
-Gladys, fügen Sie es über den Tab **Entdecken** erneut hinzu und wählen Sie es
+Kennung für ein Widget zu lang war. Lösche nach dem Update das Gerät in
+Gladys, füge es über den Tab **Entdecken** erneut hinzu und wähle es
 dann in den Widget-Einstellungen neu aus. Der Verlauf des alten Geräts und die
 Szenen, die es verwenden, müssen neu angelegt werden.
 
-**„Aufrufkontingent überschritten“** — erhöhen Sie das
+**„Aufrufkontingent überschritten“** — erhöhe das
 Aktualisierungsintervall. LG zählt die Aufrufe jedes Clients, und eine
 Aktualisierung kostet einen Aufruf pro Gerät.
 
@@ -220,6 +221,6 @@ Schaltfläche und in den Protokollen der Integration angezeigt.
 ## Datenschutz
 
 Das Personal Access Token wird von Gladys verschlüsselt gespeichert und nie an
-Ihren Browser zurückgesendet. Es kann jederzeit unter
+deinen Browser zurückgesendet. Es kann jederzeit unter
 <https://connect-pat.lgthinq.com> widerrufen werden, was den Zugriff dieser
-Integration sofort unterbindet, ohne Ihr LG-Konto zu berühren.
+Integration sofort unterbindet, ohne dein LG-Konto zu berühren.

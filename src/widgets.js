@@ -86,15 +86,15 @@ const TEXTS = {
     es: 'p. ej. COOL, 22, true',
   },
   valueHelp: {
-    en: 'The values each property accepts are listed by "List the properties" in the Configuration screen.',
+    en: 'The values each property accepts are listed by "List the properties" in the Configuration tab.',
     fr: "Les valeurs acceptées par chaque propriété sont listées par « Lister les propriétés » dans l'écran de configuration.",
     de: 'Die Werte, die jede Eigenschaft akzeptiert, listet "Eigenschaften auflisten" im Tab "Konfiguration" auf.',
     es: 'Los valores que acepta cada propiedad aparecen con "Mostrar las propiedades" en la pestaña "Configuración".',
   },
   needsForm: {
-    en: 'This button needs Gladys 5.2 or later. Use "Send a command" in the Configuration screen meanwhile.',
+    en: 'This button needs Gladys 5.2 or later. Use "Send a command" in the Configuration tab meanwhile.',
     fr: "Ce bouton demande Gladys 5.2 ou plus. Utilisez « Envoyer une commande » dans l'écran de configuration d'ici là.",
-    de: 'Diese Schaltfläche erfordert Gladys 5.2 oder neuer. Verwenden Sie bis dahin "Befehl senden" im Tab "Konfiguration".',
+    de: 'Diese Schaltfläche erfordert Gladys 5.2 oder neuer. Verwende bis dahin "Befehl senden" im Tab "Konfiguration".',
     es: 'Este botón requiere Gladys 5.2 o posterior. Mientras tanto, use "Enviar un comando" en la pestaña "Configuración".',
   },
   allRefreshed: {
@@ -106,13 +106,13 @@ const TEXTS = {
   unknownAppliance: {
     en: 'This appliance is not known to the LG ThinQ integration: check its configuration, or pick another appliance in the widget settings.',
     fr: "Cet appareil n'est pas connu de l'intégration LG ThinQ : vérifiez sa configuration, ou choisissez un autre appareil dans les réglages du widget.",
-    de: 'Dieses Gerät ist der Integration LG ThinQ nicht bekannt: Prüfen Sie ihre Konfiguration oder wählen Sie in den Widget-Einstellungen ein anderes Gerät.',
+    de: 'Dieses Gerät ist der Integration LG ThinQ nicht bekannt: Prüfe ihre Konfiguration oder wähle in den Widget-Einstellungen ein anderes Gerät.',
     es: 'La integración LG ThinQ no conoce este electrodoméstico: compruebe su configuración o elija otro electrodoméstico en los ajustes del widget.',
   },
   noAppliance: {
-    en: 'No LG appliance added yet: add them from the Discovery tab of the integration.',
+    en: 'No LG appliance added yet: add them from the Discover tab of the integration.',
     fr: "Aucun appareil LG ajouté pour l'instant : ajoutez-les depuis l'onglet Découverte de l'intégration.",
-    de: 'Noch kein LG-Gerät hinzugefügt: Fügen Sie Ihre Geräte im Tab "Entdecken" der Integration hinzu.',
+    de: 'Noch kein LG-Gerät hinzugefügt: Füge deine Geräte im Tab "Entdecken" der Integration hinzu.',
     es: 'Aún no se ha añadido ningún electrodoméstico LG: añádalos desde la pestaña "Descubrir" de la integración.',
   },
 };

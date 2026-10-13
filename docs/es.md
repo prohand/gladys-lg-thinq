@@ -107,8 +107,7 @@ lo demás está disponible mediante dos botones de la pestaña **Configuración*
 
 ## Widgets del panel
 
-En un panel, **Editar** → añadir un widget → sección **Widgets de
-integraciones**:
+**Panel → Editar → Nuevo widget**, sección **Widgets de integraciones**:
 
 - **Electrodoméstico LG** — un electrodoméstico, elegido en los ajustes del
   widget: sus valores en directo (temperaturas, humedad, tiempo restante…), lo
@@ -135,7 +134,7 @@ aceptados. El botón no aparece para un electrodoméstico sin nada modificable.
 
 ### Disparadores
 
-En el editor de escenas, categoría **Integraciones**:
+En una escena, **Añadir activador → Integraciones**:
 
 | Disparador                                             | Cuándo                                                            |
 | ------------------------------------------------------ | ----------------------------------------------------------------- |
@@ -164,6 +163,8 @@ Conviene saber:
   volver a dispararse a sí misma en bucle.
 
 ### Acciones
+
+En una escena, **Nueva acción → Integraciones**:
 
 | Acción                                     | Qué hace                                                                                                               |
 | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |

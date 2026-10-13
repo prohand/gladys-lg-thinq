@@ -5,7 +5,7 @@
   "description": {
     "en": "Discover and control the LG appliances of your ThinQ account, through the official LG API.",
     "fr": "Découvrez et pilotez les appareils LG de votre compte ThinQ, via l'API officielle LG.",
-    "de": "Entdecken und steuern Sie die LG-Geräte Ihres ThinQ-Kontos über die offizielle LG-API.",
+    "de": "Entdecke und steuere die LG-Geräte deines ThinQ-Kontos über die offizielle LG-API.",
     "es": "Descubra y controle los electrodomésticos LG de su cuenta ThinQ con la API oficial de LG."
   },
   "version": "2.3.0",
@@ -21,13 +21,13 @@
       "label": {
         "en": "Connect your LG account",
         "fr": "Connectez votre compte LG",
-        "de": "Verbinden Sie Ihr LG-Konto",
+        "de": "Verbinde dein LG-Konto",
         "es": "Conecte su cuenta LG"
       },
       "description": {
         "en": "This integration uses the official LG ThinQ Connect API. Log in on the LG page below with the LG account your appliances are registered on, create a Personal Access Token, tick the scopes of the appliances you want to use, then paste the token here.",
         "fr": "Cette intégration utilise l'API officielle LG ThinQ Connect. Connectez-vous sur la page LG ci-dessous avec le compte LG sur lequel vos appareils sont enregistrés, créez un jeton d'accès personnel (PAT), cochez les autorisations des appareils souhaités, puis collez le jeton ici.",
-        "de": "Diese Integration nutzt die offizielle LG ThinQ Connect API. Melden Sie sich auf der unten verlinkten LG-Seite mit dem LG-Konto an, auf dem Ihre Geräte registriert sind, erstellen Sie ein Personal Access Token (PAT), haken Sie die Berechtigungen der gewünschten Geräte an und fügen Sie das Token dann hier ein.",
+        "de": "Diese Integration nutzt die offizielle LG ThinQ Connect API. Melde dich auf der unten verlinkten LG-Seite mit dem LG-Konto an, auf dem deine Geräte registriert sind, erstelle ein Personal Access Token (PAT), hake die Berechtigungen der gewünschten Geräte an und füge das Token dann hier ein.",
         "es": "Esta integración utiliza la API oficial LG ThinQ Connect. Inicie sesión en la página de LG que aparece abajo con la cuenta LG en la que están registrados sus electrodomésticos, cree un token de acceso personal (PAT), marque los permisos de los electrodomésticos que desea usar y pegue el token aquí."
       },
       "links": [
@@ -80,7 +80,7 @@
       "description": {
         "en": "LG hosts accounts on regional servers: pick the country your LG account was created in, not the one you live in today.",
         "fr": "LG héberge les comptes sur des serveurs régionaux : choisissez le pays de création du compte LG, pas votre pays de résidence actuel.",
-        "de": "LG speichert die Konten auf regionalen Servern: Wählen Sie das Land, in dem Ihr LG-Konto erstellt wurde, nicht das, in dem Sie heute wohnen.",
+        "de": "LG speichert die Konten auf regionalen Servern: Wähle das Land, in dem dein LG-Konto erstellt wurde, nicht das, in dem du heute wohnst.",
         "es": "LG aloja las cuentas en servidores regionales: elija el país en el que se creó su cuenta LG, no el país en el que vive hoy."
       },
       "required": true,
@@ -1072,7 +1072,7 @@
       "description": {
         "en": "LG meters the number of API calls per client. Each appliance costs one call per refresh, so keep the interval comfortable if you own many appliances.",
         "fr": "LG limite le nombre d'appels d'API par client. Chaque appareil coûte un appel par rafraîchissement : gardez un intervalle confortable si vous possédez beaucoup d'appareils.",
-        "de": "LG begrenzt die Anzahl der API-Aufrufe pro Client. Jedes Gerät kostet einen Aufruf pro Aktualisierung: Wählen Sie ein großzügiges Intervall, wenn Sie viele Geräte besitzen.",
+        "de": "LG begrenzt die Anzahl der API-Aufrufe pro Client. Jedes Gerät kostet einen Aufruf pro Aktualisierung: Wähle ein großzügiges Intervall, wenn du viele Geräte besitzt.",
         "es": "LG limita el número de llamadas a la API por cliente. Cada electrodoméstico cuesta una llamada por actualización: mantenga un intervalo holgado si tiene muchos electrodomésticos."
       }
     },

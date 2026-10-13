@@ -83,7 +83,7 @@ export function warnLegacyDevices(gladys, models) {
   if (legacy.length > 0) {
     logger.warn(
       `${legacy.join(', ')}: added with an old identifier, no longer updated. ` +
-        'Delete them in Gladys, then add them again from the Discovery tab.',
+        'Delete them in Gladys, then add them again from the Discover tab.',
     );
   }
   return legacy;
