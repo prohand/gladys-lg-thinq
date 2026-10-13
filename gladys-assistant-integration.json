@@ -8,8 +8,8 @@
     "de": "Entdecke und steuere die LG-Geräte deines ThinQ-Kontos über die offizielle LG-API.",
     "es": "Descubra y controle los electrodomésticos LG de su cuenta ThinQ con la API oficial de LG."
   },
-  "version": "2.3.0",
-  "docker_image": "ghcr.io/prohand/gladys-lg-thinq:2.3.0",
+  "version": "2.4.0",
+  "docker_image": "ghcr.io/prohand/gladys-lg-thinq:2.4.0",
   "gladys_version": ">=5.2.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-lg-thinq/main/cover.png",
   "categories": ["appliances", "climate"],
