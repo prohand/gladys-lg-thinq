@@ -80,7 +80,7 @@ src/widgets.js           dashboard widgets
   fails (network not up yet after a container start, LG down), the loop retries it every 5 min
   (`discoverAndPublish`) instead of leaving the integration without any refresh.
 - **Errors are user problems, not crashes**: `describeFailure()` turns auth and quota errors into
-  actionable bilingual messages in the Configuration screen.
+  actionable multi-language messages in the Configuration screen.
 - The token is a secret: never log it.
 - Widget, trigger and action keys are stored by users: never rename them.
 
@@ -97,5 +97,6 @@ fake API; `test/helpers/fakeGladys.js` stands in for the SDK.
 ## Conventions
 
 Prettier formats, ESLint catches mistakes. Comments explain **why**. User-facing messages are
-bilingual `{ en, fr }`; user docs in `docs/en.md` and `docs/fr.md`, kept in sync. The container
+`{ en, fr, de, es }` (`src/languages.js`); user docs in `docs/en.md`, `docs/fr.md`, `docs/de.md`
+and `docs/es.md`, kept in sync. The container
 rootfs is read-only: write nothing.

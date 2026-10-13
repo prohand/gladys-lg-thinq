@@ -1,0 +1,224 @@
+# LG ThinQ
+
+Esta integración conecta Gladys Assistant con los electrodomésticos registrados
+en su cuenta LG — aire acondicionado, lavadora, secadora, lavavajillas,
+frigorífico, horno, purificador de aire, robot aspirador… — mediante la **API
+oficial ThinQ Connect de LG**.
+
+Es una integración **en la nube**: Gladys habla con los servidores de LG, y LG
+habla con sus electrodomésticos. No hay ingeniería inversa y no se guarda
+ninguna contraseña: la única credencial es un token que usted mismo crea y
+puede revocar en cualquier momento.
+
+## Antes de empezar
+
+Necesita:
+
+- **Gladys 5.2** o posterior;
+- una **cuenta LG ThinQ** con sus electrodomésticos ya añadidos en la
+  aplicación móvil LG ThinQ (esta integración descubre los electrodomésticos,
+  no los empareja);
+- electrodomésticos **en línea** en la aplicación;
+- el **país** en el que se creó su cuenta LG — LG aloja las cuentas en
+  servidores regionales, y la región equivocada responde simplemente «usuario
+  desconocido».
+
+## Paso 1 — Crear un token de acceso personal
+
+1. Abra <https://connect-pat.lgthinq.com> e inicie sesión con **la misma cuenta
+   LG** que usa en la aplicación ThinQ.
+2. Pulse **Create New Token**.
+3. Dé un nombre al token (por ejemplo `Gladys`).
+4. Marque los **permisos** (scopes) correspondientes a los electrodomésticos que
+   quiere usar en Gladys. Si falta un permiso, el electrodoméstico es invisible
+   para la integración: en caso de duda, márquelos todos.
+5. Pulse **Create Token** y copie el token — LG solo lo muestra una vez.
+
+La documentación de LG sobre esta pantalla:
+<https://thinq.developer.lge.com/en/cloud/docs/thinq-connect/PAT-en/>
+
+## Paso 2 — Configurar la integración en Gladys
+
+1. Abra la integración LG ThinQ en Gladys, pestaña **Configuración**.
+2. Pegue el token en **Token de acceso personal**.
+3. Elija el **País de la cuenta LG**.
+4. Pulse **Guardar configuración**.
+5. Pulse **Probar la conexión**: Gladys responde con la región alcanzada y la
+   lista de electrodomésticos encontrados. Si funciona, sus electrodomésticos
+   aparecen en la pestaña **Dispositivos** en pocos segundos.
+
+Los demás ajustes son opcionales:
+
+- **Intervalo de actualización** — con qué frecuencia se lee cada
+  electrodoméstico (5 minutos por defecto, como mucho una vez por minuto). LG
+  limita las llamadas a la API por cliente y cada electrodoméstico cuesta una
+  llamada por actualización: redúzcalo solo si tiene pocos electrodomésticos.
+- **Unidad de temperatura** — LG publica cada temperatura dos veces, en Celsius
+  y en Fahrenheit. Solo la unidad elegida se convierte en una función de
+  Gladys.
+- **Exponer todas las propiedades numéricas** — desactivado por defecto.
+  Actívelo para obtener también los desfases de programación y los contadores
+  que expone LG; útil para explorar lo que comunica un electrodoméstico
+  concreto.
+
+## Qué obtiene
+
+La integración lee el **perfil** de cada electrodoméstico — la descripción que
+hace LG de lo que ese modelo exacto puede comunicar y aceptar — y construye a
+partir de él las funciones de Gladys. Lo que ve depende, por tanto, de su
+hardware, no de una lista fija:
+
+| Lo que expone LG                                         | Lo que obtiene en Gladys                                   |
+| -------------------------------------------------------- | ---------------------------------------------------------- |
+| Encendido/apagado y otras opciones de activar/desactivar | Un interruptor que puede controlar y usar en escenas       |
+| Temperatura objetivo                                     | Una consigna, con los límites de su modelo                 |
+| Temperatura actual, humedad, PM2.5, PM10, CO2            | Sensores, con historial y gráficos                         |
+| Vida útil del filtro, batería                            | Sensores, en porcentaje                                    |
+| Tiempo restante de un ciclo                              | Una duración, en horas y minutos                           |
+| Puerta abierta/cerrada                                   | Un sensor de apertura                                      |
+| Modo de funcionamiento, estado, nombre del programa      | Una función de texto, utilizable como disparador de escena |
+
+Un electrodoméstico se lee en cuanto lo añade, así que sus funciones tienen un
+valor desde el primer momento; después, todo se actualiza con el intervalo
+configurado. Gladys muestra una **insignia** en cada electrodoméstico: `cloud`
+cuando LG responde, `unreachable` (naranja) cuando el electrodoméstico está
+desenchufado o fuera de la red.
+
+## Controlar algo para lo que Gladys no tiene función
+
+Los modos de LG dependen del modelo: su aire acondicionado puede aceptar
+`COOL`, `HEAT`, `AIR_DRY`, mientras que otro acepta también `ENERGY_SAVING`. Las
+funciones de Gladys cubren lo universal (encendido, temperatura, sensores); todo
+lo demás está disponible mediante dos botones de la pestaña **Configuración**:
+
+1. **Mostrar las propiedades** — elija un electrodoméstico y Gladys muestra cada
+   propiedad que acepta con los valores exactos permitidos, por ejemplo:
+
+   ```
+   airConJobMode.currentJobMode = COOL | HEAT | AIR_DRY
+   temperatureInUnits.targetTemperatureC = 18..30, step 1
+   airFlow.windStrength = LOW | MID | HIGH
+   ```
+
+2. **Enviar un comando** — elija el electrodoméstico y pegue el nombre de la
+   propiedad y el valor. El comando se comprueba con el perfil antes de
+   enviarse, de modo que un error tipográfico se rechaza con la lista de
+   valores permitidos en lugar de fallar en silencio.
+
+## Widgets del panel
+
+En un panel, **Editar** → añadir un widget → sección **Widgets de
+integraciones**:
+
+- **Electrodoméstico LG** — un electrodoméstico, elegido en los ajustes del
+  widget: sus valores en directo (temperaturas, humedad, tiempo restante…), lo
+  que está haciendo (estado, modo), su conexión con la nube de LG y los botones
+  **Encender** / **Apagar**, **Actualizar** y **Enviar un comando**;
+- **Electrodomésticos LG** — todos los electrodomésticos LG en una tarjeta, cada
+  uno con su estado («En curso», «Terminado», «Inaccesible»…) y un botón
+  **Actualizar**.
+
+Los valores siguen el intervalo de actualización; **Actualizar** consulta a LG
+de inmediato, salvo para un electrodoméstico ya leído en los últimos 2 minutos:
+en ese caso se muestra su última lectura (cada llamada a LG cuenta para su
+cuota). Solo se muestran los electrodomésticos añadidos a Gladys.
+
+**Enviar un comando** abre un pequeño formulario en la tarjeta: elija una de las
+propiedades que acepta el electrodoméstico (sus propiedades modificables,
+listadas por nombre) y escriba el valor — `COOL`, `22`, `true`… Hace
+exactamente lo mismo que el botón **Enviar un comando** de la pestaña
+Configuración: el valor se comprueba con lo que acepta el electrodoméstico
+antes de enviar nada, y **Mostrar las propiedades** muestra los valores
+aceptados. El botón no aparece para un electrodoméstico sin nada modificable.
+
+## Escenas
+
+### Disparadores
+
+En el editor de escenas, categoría **Integraciones**:
+
+| Disparador                                             | Cuándo                                                            |
+| ------------------------------------------------------ | ----------------------------------------------------------------- |
+| **Electrodoméstico LG: ciclo terminado**               | Una lavadora, secadora, lavavajillas u horno termina su ciclo     |
+| **Electrodoméstico LG: cambio de estado**              | El estado de funcionamiento cambia (`RUNNING`, `RINSING`, `END`…) |
+| **Electrodoméstico LG: conexión perdida / recuperada** | El electrodoméstico sale de la nube de LG o vuelve a ella         |
+
+Un filtro vacío significa «cualquiera». El filtro **Nuevo estado** espera el
+valor exacto de LG, en mayúsculas (`END`, `RUNNING`…): **Mostrar las
+propiedades** muestra los valores de cada electrodoméstico.
+
+Las siguientes acciones de la escena pueden reutilizar el nombre del
+electrodoméstico, el subaparato (lavadora o secadora de una WashTower), el
+estado nuevo y el anterior. Ejemplo: «Ciclo terminado» → enviar un mensaje
+«{{triggerEvent.data.device_name}} ha terminado».
+
+Conviene saber:
+
+- los cambios se detectan **en la siguiente lectura** del electrodoméstico: un
+  ciclo que termina se comunica como mucho un intervalo de actualización
+  después;
+- no se dispara nada al iniciarse la integración: un cambio necesita un «antes»
+  y un «después»;
+- una lectura provocada por una acción (botón, escena, comando) no dispara nada
+  de inmediato — lo hace la siguiente lectura normal. Así una escena no puede
+  volver a dispararse a sí misma en bucle.
+
+### Acciones
+
+| Acción                                     | Qué hace                                                                                                               |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| **Electrodoméstico LG: enviar un comando** | Como el botón **Enviar un comando**: cualquier propiedad, comprobada antes de enviarse                                 |
+| **Electrodoméstico LG: leer el estado**    | Lee el electrodoméstico al instante y pasa a las siguientes acciones: conectado (sí/no), estado, tiempo restante (min) |
+
+Ejemplo: cada noche a las 22:00, «Leer el estado» de la lavadora → condición
+«estado de funcionamiento = `END`» → notificación «Vacíe la lavadora».
+
+«Leer el estado» llama a LG como mucho una vez cada 2 minutos por
+electrodoméstico: dentro de ese intervalo, la escena recibe la última lectura.
+
+## Solución de problemas
+
+**«LG ha rechazado las credenciales»** — el token o el país son incorrectos. Los
+tokens están ligados a la cuenta que los creó: compruebe que ha usado la misma
+cuenta LG que en la aplicación ThinQ y elija el país en el que se creó la
+cuenta.
+
+**Falta un electrodoméstico** — o bien su permiso no se marcó al crear el token
+(cree un token nuevo con los permisos adecuados), o bien se añadió a la
+aplicación de LG después de la última consulta de Gladys. Pulse **Actualizar la
+lista de electrodomésticos**.
+
+**Un electrodoméstico muestra una insignia naranja `unreachable`** — LG lo
+comunica como no conectado. Compruebe en la aplicación LG ThinQ que está
+encendido y conectado a la Wi-Fi; la insignia desaparece sola en la siguiente
+actualización.
+
+**Un electrodoméstico recién añadido muestra «Sin valor reciente»** — el
+electrodoméstico se lee en el momento en que lo añade, así que esto significa
+que LG no tenía nada que comunicar en ese instante: normalmente el
+electrodoméstico está fuera de la red (compruebe si tiene la insignia naranja).
+La siguiente actualización rellena las funciones en cuanto LG vuelve a
+responder.
+
+**El widget Electrodoméstico LG muestra «settings.device: must be at most 100
+characters»** — el electrodoméstico se añadió con la versión 2.0.0 o anterior,
+cuyo identificador era demasiado largo para un widget. Tras la actualización,
+elimine el electrodoméstico en Gladys, vuelva a añadirlo desde la pestaña
+**Descubrir** y elíjalo de nuevo en los ajustes del widget. El historial del
+dispositivo antiguo y las escenas que lo usan deben rehacerse.
+
+**«Se ha superado la cuota de llamadas»** — aumente el intervalo de
+actualización. LG cuenta las llamadas de cada cliente, y una actualización
+cuesta una llamada por electrodoméstico.
+
+**Se rechaza un comando** — LG rechaza los comandos que un electrodoméstico no
+puede ejecutar en su estado actual (poner en marcha una lavadora con la puerta
+abierta, cambiar el modo mientras está apagado). El motivo se muestra bajo el
+botón y en los registros de la integración.
+
+## Privacidad
+
+Gladys guarda cifrado el token de acceso personal y nunca lo devuelve a su
+navegador. Puede revocarse en cualquier momento desde
+<https://connect-pat.lgthinq.com>, lo que corta al instante el acceso de esta
+integración sin tocar su cuenta LG.

@@ -535,6 +535,8 @@ export class DeviceRegistry {
             message: {
               en: 'The appliance is not connected to the LG cloud.',
               fr: "L'appareil n'est pas connecté au cloud LG.",
+              de: 'Das Gerät ist nicht mit der LG-Cloud verbunden.',
+              es: 'El electrodoméstico no está conectado a la nube de LG.',
             },
           }
         : {}),
