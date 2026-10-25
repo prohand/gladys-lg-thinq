@@ -227,8 +227,9 @@ picks up the new version.
   one minute and the registry drops the ticks that come before the interval the
   user asked for, so the LG call quota is respected.
 - **The refresh loop is the integration's own.** Appliances are published with
-  `should_poll: true` (without it Gladys registers the cadence but enrolls the
-  device in nothing), and the integration also runs its own timer. Both paths
+  `should_poll: true` (without it a Gladys core before 5.3 registers the cadence
+  but enrolls the device in nothing; 5.3 sets it from `poll_frequency`), and the
+  integration also runs its own timer. Both paths
   go through the same `dueForPoll` guard and the same `lastPollAt`, so an
   appliance is read once per interval whichever one fires — and an appliance
   created before the flag existed still refreshes, instead of staying frozen

@@ -59,7 +59,12 @@ src/widgets.js           dashboard widgets
   `poll_frequency: 60000` (`SCHEDULER_POLL_FREQUENCY`; Gladys only accepts 1 s–60 s and rejects
   the whole discovery otherwise). An integration-owned loop (`refreshDueAppliances`) also ticks
   every minute because appliances created before `should_poll` was published are never polled by
-  Gladys. Both share `dueForPoll`/`lastPollAt`, so the LG quota is unchanged.
+  Gladys (5.3 sets the flag from `poll_frequency`, but only at creation). Both share
+  `dueForPoll`/`lastPollAt`, so the LG quota is unchanged.
+- **Polls publish only what changed** (`publishChangedStates`, `STATE_HEARTBEAT_MS` = 30 min):
+  Gladys takes 300 states a minute and keeps a history row per state. A command echoes its value
+  with `publishState` and forgets that feature, so the next poll publishes the real value;
+  `onConnected` forgets everything.
 - **Forced reads are rate-limited too**: the widget Refresh buttons and the
   `refresh_appliance` scene action read an appliance at most once every 2 min
   (`FORCED_READ_MIN_INTERVAL_MS`, measured from any read) and otherwise answer
@@ -87,7 +92,9 @@ src/widgets.js           dashboard widgets
 ### Manifest
 
 `test/manifest.test.js` keeps `gladys-assistant-integration.json` in sync with `DEFAULT_CONFIG`,
-the bounds, `ACTIONS`, `SCENE_ACTIONS`, `WIDGETS` and the trigger keys (`gladys_version >=5.1.0`).
+the bounds, `ACTIONS`, `SCENE_ACTIONS`, `WIDGETS` and the trigger keys, and pins the store rules:
+categories in the store vocabulary, `keywords` shape, no `countries` (sold worldwide),
+`gladys_version >=5.3.0` (keywords; 5.1.0 for widgets and scenes, 5.2.0 for widget forms).
 
 ## Testing
 

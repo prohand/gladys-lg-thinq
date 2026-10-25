@@ -37,6 +37,14 @@ const REQUEST_SPACING_MS = 150;
  */
 export const FORCED_READ_MIN_INTERVAL_MS = 120 * 1000;
 
+/**
+ * An unchanged state is sent again this often. Polls only send what changed
+ * (`publishChangedStates`): Gladys takes 300 states a minute per integration
+ * and keeps a history row per state, while most values of an appliance read
+ * every minute do not move. The heartbeat keeps a stable value recently dated.
+ */
+export const STATE_HEARTBEAT_MS = 30 * 60 * 1000;
+
 /** Is this ThinQ error about the whole account (credentials, quota)? */
 function isAccountError(err) {
   return err instanceof ThinqApiError && (err.isAuthError || err.isRateLimited);
@@ -291,10 +299,12 @@ export class DeviceRegistry {
     model.online = true;
     model.lastState = state;
     const states = buildStates(model, state);
+    let sent = 0;
     if (states.length > 0) {
-      await gladys.publishStates(states);
+      const result = await gladys.publishChangedStates(states, { heartbeat: STATE_HEARTBEAT_MS });
+      sent = result?.count ?? states.length;
     }
-    logger.debug(`${model.name}: ${states.length} state(s) published`);
+    logger.debug(`${model.name}: ${sent} of ${states.length} state(s) published (changed only)`);
     await this.observe(gladys, model, state, silent);
   }
 
@@ -514,11 +524,14 @@ export class DeviceRegistry {
 
     // The appliance confirms asynchronously; publish the requested value so the
     // dashboard follows immediately. The next poll reconciles it if the
-    // appliance decided otherwise.
+    // appliance decided otherwise: that value went out outside the memory of
+    // `publishChangedStates`, which must forget the feature, or a poll reading
+    // the value it last sent would skip it and leave the requested one shown.
     await gladys.publishState(
       feature.external_id,
       binding.codec.toGladys(binding.codec.toThinq(value)),
     );
+    gladys.forgetPublishedStates(feature.external_id);
   }
 
   /**

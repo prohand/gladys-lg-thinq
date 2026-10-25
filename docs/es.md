@@ -14,7 +14,7 @@ puede revocar en cualquier momento.
 
 Necesita:
 
-- **Gladys 5.2** o posterior;
+- **Gladys 5.3** o posterior;
 - una **cuenta LG ThinQ** con sus electrodomésticos ya añadidos en la
   aplicación móvil LG ThinQ (esta integración descubre los electrodomésticos,
   no los empareja);

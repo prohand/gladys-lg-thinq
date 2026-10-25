@@ -12,7 +12,7 @@ only credential is a token you create yourself and can revoke at any time.
 
 You need:
 
-- **Gladys 5.2** or newer;
+- **Gladys 5.3** or newer;
 - an **LG ThinQ account** with your appliances already added in the LG ThinQ
   mobile app (this integration discovers appliances, it does not pair them);
 - appliances that are **online** in the app;

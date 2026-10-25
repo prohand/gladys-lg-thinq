@@ -246,6 +246,9 @@ export function createRuntime(
     /** Gladys is (back): read the configuration and start over. */
     async onConnected() {
       gladysConnected = true;
+      // Gladys may have restarted, or lost values while it was away: the next
+      // reads publish every state again instead of only the changes.
+      gladys.forgetPublishedStates();
       try {
         config = normalizeConfig(await gladys.getConfig());
       } catch (err) {

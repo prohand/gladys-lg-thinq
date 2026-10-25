@@ -4,6 +4,8 @@
 // It reproduces the only surface the integration relies on:
 //   - externalIds(type, platformId) -> { device, feature(key) }
 //   - publishState / publishStates    -> recorded so tests can assert them
+//   - publishChangedStates            -> same, skipping unchanged values like the SDK
+//   - forgetPublishedStates           -> clears that memory, like the SDK
 //   - publishDiscoveredDevices        -> recorded so tests can assert them
 //   - publishTransports               -> recorded so tests can assert them
 //   - setConnectionStatus             -> recorded so tests can assert them
@@ -21,6 +23,7 @@ export function createFakeGladys({ selector = 'lg-thinq', devices } = {}) {
   const connectionStatuses = [];
   const sceneEvents = [];
   const widgetRefreshes = [];
+  const lastPublished = new Map();
 
   return {
     published,
@@ -51,6 +54,30 @@ export function createFakeGladys({ selector = 'lg-thinq', devices } = {}) {
           featureExternalId: s.device_feature_external_id,
           ...(s.text !== undefined ? { text: s.text } : { state: s.state }),
         });
+      }
+    },
+
+    // Mirrors the SDK: an entry equal to the last value published through it
+    // is skipped, unless the heartbeat is due.
+    async publishChangedStates(states, { heartbeat } = {}) {
+      const changed = states.filter((s) => {
+        const value = s.text !== undefined ? `t:${s.text}` : `s:${s.state}`;
+        const last = lastPublished.get(s.device_feature_external_id);
+        if (last && last.value === value && !(heartbeat && Date.now() - last.at >= heartbeat)) {
+          return false;
+        }
+        lastPublished.set(s.device_feature_external_id, { value, at: Date.now() });
+        return true;
+      });
+      await this.publishStates(changed);
+      return { success: true, count: changed.length };
+    },
+
+    forgetPublishedStates(externalId) {
+      for (const id of [...lastPublished.keys()]) {
+        if (externalId === undefined || id === externalId || id.startsWith(`${externalId}:`)) {
+          lastPublished.delete(id);
+        }
       }
     },
 
