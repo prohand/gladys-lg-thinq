@@ -290,11 +290,12 @@ export function buildDeviceModel(gladys, { thinqDevice, profile, config }) {
     device: {
       name,
       external_id: ids.device,
-      // A `poll_frequency` alone schedules nothing: Gladys only enrolls a
-      // device in its poll loop when `should_poll` is true AND a frequency is
-      // set (`t_device.should_poll` is NOT NULL and defaults to false). Without
-      // this flag the appliance is created, then never polled again — no value
-      // ever refreshes after the read that follows the add.
+      // Before Gladys 5.3 a `poll_frequency` alone scheduled nothing: the core
+      // only enrolled a device in its poll loop when `should_poll` was true AND
+      // a frequency was set (`t_device.should_poll` is NOT NULL and defaults to
+      // false), so the appliance was created, then never polled again. 5.3 sets
+      // the flag from `poll_frequency`; it stays explicit, harmless, and the
+      // same code serves the appliances created before.
       should_poll: true,
       // Gladys only accepts its own enum of cadences, the slowest being one
       // minute; the user's (slower) interval is enforced by the registry.

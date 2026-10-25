@@ -14,7 +14,7 @@ Token, das du selbst erstellst und jederzeit widerrufen kannst.
 
 Du benötigst:
 
-- **Gladys 5.2** oder neuer;
+- **Gladys 5.3** oder neuer;
 - ein **LG ThinQ-Konto**, in dem deine Geräte bereits in der mobilen LG ThinQ
   App hinzugefügt sind (diese Integration entdeckt Geräte, sie koppelt sie
   nicht);

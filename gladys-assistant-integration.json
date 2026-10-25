@@ -10,9 +10,21 @@
   },
   "version": "2.4.1",
   "docker_image": "ghcr.io/prohand/gladys-lg-thinq:2.4.1",
-  "gladys_version": ">=5.2.0",
+  "gladys_version": ">=5.3.0",
   "cover_image": "https://raw.githubusercontent.com/prohand/gladys-lg-thinq/main/cover.png",
   "categories": ["appliances", "climate"],
+  "keywords": [
+    "lg electronics",
+    "thinq connect",
+    "washing machine",
+    "dryer",
+    "dishwasher",
+    "refrigerator",
+    "air conditioner",
+    "air purifier",
+    "oven",
+    "robot vacuum"
+  ],
   "transports": ["cloud"],
   "config_schema": [
     {

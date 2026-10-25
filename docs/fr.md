@@ -14,7 +14,7 @@ tout moment.
 
 Il vous faut :
 
-- **Gladys 5.2** ou plus récent ;
+- **Gladys 5.3** ou plus récent ;
 - un **compte LG ThinQ** avec vos appareils déjà ajoutés dans l'application
   mobile LG ThinQ (cette intégration découvre les appareils, elle ne les appaire
   pas) ;

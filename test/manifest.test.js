@@ -54,6 +54,58 @@ test('declaring catalog categories requires Gladys >= 4.86.0', () => {
   );
 });
 
+// The store vocabulary of catalog shelves (an unknown key is silently dropped).
+const CATEGORIES = [
+  'climate',
+  'lighting',
+  'energy',
+  'security',
+  'multimedia',
+  'appliances',
+  'environment',
+  'protocols',
+  'network',
+  'notifications',
+  'assistants',
+  'services',
+  'transport',
+  'vehicles',
+  'servers',
+  'leisure',
+];
+
+test('categories are keys of the store vocabulary', () => {
+  for (const category of manifest.categories) {
+    assert.ok(CATEGORIES.includes(category), `unknown category "${category}"`);
+  }
+});
+
+test('keywords are 1 to 10 unique search terms of 2 to 30 characters', () => {
+  assert.ok(Array.isArray(manifest.keywords));
+  assert.ok(manifest.keywords.length >= 1 && manifest.keywords.length <= 10);
+  const seen = new Set();
+  for (const keyword of manifest.keywords) {
+    const normalized = keyword.trim().toLowerCase();
+    assert.ok(normalized.length >= 2 && normalized.length <= 30, `keyword "${keyword}"`);
+    assert.ok(!seen.has(normalized), `duplicate keyword "${keyword}"`);
+    seen.add(normalized);
+  }
+});
+
+test('LG appliances are sold worldwide: no countries restriction', () => {
+  assert.equal(manifest.countries, undefined);
+});
+
+test('keywords, countries and music require Gladys >= 5.3.0', () => {
+  // Gladys 5.3 is the first release reading `keywords`, `countries` and
+  // `music`: an older core would refuse the whole manifest.
+  const [major, minor] = minimumGladysVersion();
+  assert.ok(
+    major > 5 || (major === 5 && minor >= 3),
+    `keywords / countries / music require gladys_version >= 5.3.0, got "${manifest.gladys_version}"`,
+  );
+});
+
 test('config_schema defaults stay consistent with DEFAULT_CONFIG', () => {
   for (const field of manifest.config_schema) {
     if (field.default !== undefined) {

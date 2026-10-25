@@ -330,6 +330,32 @@ test('a command reaches LG and echoes the requested state', async () => {
   assert.deepEqual(gladys.published.at(-1), { featureExternalId: feature.external_id, state: 0 });
 });
 
+test('a poll only publishes what changed since the last one', async () => {
+  const { registry, gladys } = buildRegistry();
+  await registry.discover(gladys, config);
+  const model = [...registry.models.values()].find((m) => m.name === 'Salon');
+  await registry.pollModel(gladys, model);
+  const first = gladys.published.length;
+  assert.ok(first > 0);
+
+  await registry.pollModel(gladys, model);
+  assert.equal(gladys.published.length, first, 'nothing changed, nothing sent');
+});
+
+test('after a command, the next poll publishes the real value even if unchanged', async () => {
+  const { registry, gladys } = buildRegistry();
+  await registry.discover(gladys, config);
+  const model = [...registry.models.values()].find((m) => m.name === 'Salon');
+  const feature = model.device.features.find((f) => f.name === 'On/Off');
+  await registry.pollModel(gladys, model);
+  const polled = gladys.published.findLast((p) => p.featureExternalId === feature.external_id);
+
+  // The appliance ignores the order: it still reports what the poll read.
+  await registry.setValue(gladys, { device: model.device, feature, value: 1 - polled.state });
+  await registry.pollModel(gladys, model);
+  assert.deepEqual(gladys.published.at(-1), polled);
+});
+
 test('a command on an unknown feature fails loudly', async () => {
   const { registry, gladys } = buildRegistry();
   await registry.discover(gladys, config);
